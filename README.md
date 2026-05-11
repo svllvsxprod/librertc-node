@@ -77,8 +77,17 @@ Current versioned endpoints:
 - `GET /api/v1/health`
 - `GET /api/v1/server/info`
 - `GET /api/v1/diagnostics`
+- `POST /api/v1/reload`
+- `GET /api/v1/clients`
+- `POST /api/v1/clients`
+- `GET /api/v1/clients/{client_id}`
+- `PATCH /api/v1/clients/{client_id}`
+- `PUT /api/v1/clients/{client_id}`
+- `DELETE /api/v1/clients/{client_id}`
 - `GET /api/v1/clients/{client_id}/subscription`
 - `GET /api/v1/clients/{client_id}/qr`
+
+`/api/v1/diagnostics`, client endpoints, and reload require admin authentication.
 
 Responses use a stable envelope:
 
@@ -100,6 +109,68 @@ Errors use:
     "details": {}
   }
 }
+```
+
+### Examples
+
+List clients:
+
+```sh
+curl -u admin:password http://127.0.0.1:18888/api/v1/clients
+```
+
+Get one client:
+
+```sh
+curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default
+```
+
+Create a client:
+
+```sh
+curl -u admin:password \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "client_id": "alice",
+    "from_client": "default",
+    "quota": {"speed_mbps": 25, "traffic_gb": 100}
+  }' \
+  http://127.0.0.1:18888/api/v1/clients
+```
+
+Update a client location and quota:
+
+```sh
+curl -u admin:password \
+  -X PATCH \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "quota": {"speed_mbps": 50, "traffic_gb": 200},
+    "carrier": "wbstream",
+    "transport": "datachannel",
+    "dns": "1.1.1.1:53",
+    "name": "Alice"
+  }' \
+  http://127.0.0.1:18888/api/v1/clients/alice
+```
+
+Delete a client:
+
+```sh
+curl -u admin:password -X DELETE http://127.0.0.1:18888/api/v1/clients/alice
+```
+
+Reload config explicitly:
+
+```sh
+curl -u admin:password -X POST http://127.0.0.1:18888/api/v1/reload
+```
+
+Get subscription or QR payload:
+
+```sh
+curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default/subscription
+curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default/qr
 ```
 
 ## Configuration
