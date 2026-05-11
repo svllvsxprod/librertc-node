@@ -14,7 +14,13 @@ Defaults:
 
 ## Prepare
 
-Build or download the matching `olcrtc` Linux binary and place it here:
+Build the matching `olcrtc` Linux binary from LibreRTC Core:
+
+```bash
+sh deploy/docker/install.sh build-core
+```
+
+This writes the binary here:
 
 ```text
 deploy/docker/bin/olcrtc

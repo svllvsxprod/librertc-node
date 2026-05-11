@@ -17,6 +17,7 @@ Usage: $0 <command>
 Commands:
   init      Create local .env and config template without starting containers
   check     Validate local deployment prerequisites
+  build-core Build the runtime binary from LibreRTC Core
   start     Validate and start with docker compose
   stop      Stop containers
   restart   Restart containers
@@ -155,6 +156,10 @@ case "$cmd" in
   check)
     init_files
     check_prerequisites
+    ;;
+  build-core)
+    init_files
+    sh "$SCRIPT_DIR/build-core.sh"
     ;;
   start)
     init_files
