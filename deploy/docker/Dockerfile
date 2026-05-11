@@ -1,18 +1,8 @@
-FROM node:24-bookworm AS web-build
-
-WORKDIR /src
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
-COPY index.html postcss.config.js tailwind.config.ts tsconfig.json vite.config.ts ./
-COPY src ./src
-RUN pnpm build
-
 FROM golang:1.26-bookworm AS go-build
 
 WORKDIR /src
 COPY go.mod ./
 COPY cmd ./cmd
-COPY --from=web-build /src/cmd/olcrtc-manager/web/dist ./cmd/olcrtc-manager/web/dist
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/librertc-node ./cmd/olcrtc-manager
 
 FROM debian:bookworm-slim
