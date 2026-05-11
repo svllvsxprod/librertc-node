@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Activity,
   Copy,
@@ -197,6 +198,29 @@ function formatBytes(bytes?: number) {
 
 function subscriptionURL(clientID: string) {
   return `${window.location.origin}/${encodeURIComponent(clientID)}/`;
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    if (!document.execCommand("copy")) throw new Error("Copy command failed");
+  } finally {
+    document.body.removeChild(textarea);
+  }
 }
 
 function cleanQuota(quota: Quota): Quota {
@@ -763,7 +787,7 @@ function App() {
 
   const copyLogs = () =>
     runAction(async () => {
-      await navigator.clipboard.writeText(
+      await copyText(
         logs.map((line) => `[${line.time}] ${line.stream}: ${line.line}`).join("\n"),
       );
     }, "Логи скопированы");
@@ -771,12 +795,12 @@ function App() {
   const copyClientURI = (clientID: string, uri: string) =>
     runAction(async () => {
       if (!uri) throw new Error("URI клиента не найден");
-      await navigator.clipboard.writeText(uri);
+      await copyText(uri);
     }, `Ссылка для ${clientID} скопирована`);
 
   const copySubscription = (clientID: string) =>
     runAction(async () => {
-      await navigator.clipboard.writeText(subscriptionURL(clientID));
+      await copyText(subscriptionURL(clientID));
     }, `Subscription для ${clientID} скопирован`);
 
   const downloadSubscription = async (clientID: string) => {
@@ -1133,11 +1157,19 @@ function App() {
       {qrTarget && (
         <Modal title={`QR ${qrTarget.clientID}`} onClose={() => setQrTarget(null)}>
           <div className="grid justify-items-center gap-4 p-5">
-            <div className="grid h-64 w-64 place-items-center rounded-2xl border border-secondary/40 bg-secondary/10 p-6 text-center shadow-[0_0_42px_rgba(0,227,253,0.18)]">
-              <div>
-                <div className="brand-title text-4xl font-bold text-secondary">QR</div>
-                <div className="mt-2 text-sm text-muted-foreground">Payload is rendered locally below. Generate image client-side in the redesign pass.</div>
-              </div>
+            <div className="rounded-[2rem] border border-secondary/40 bg-white p-4 shadow-[0_0_42px_rgba(0,227,253,0.18)]">
+              <QRCodeSVG
+                value={qrTarget.location.uri}
+                size={240}
+                marginSize={2}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#0d0e13"
+              />
+            </div>
+            <div className="text-center">
+              <div className="eyebrow">Local QR payload</div>
+              <div className="mt-1 text-sm text-muted-foreground">Код генерируется в браузере без внешних сервисов.</div>
             </div>
             <div className="max-w-full break-all rounded-lg border border-border bg-background/50 p-3 font-mono text-xs text-muted-foreground">
               {qrTarget.location.uri}
