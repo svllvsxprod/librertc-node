@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "LibreRTC Node",
+  "port": 8888,
+  "clients": [
+    {
+      "client-id": "default",
+      "quota": {
+        "speed_mbps": 0,
+        "traffic_gb": 0
+      },
+      "locations": [
+        {
+          "name": "Default",
+          "endpoint": {
+            "room_id": "replace-me-room-id",
+            "key": "replace-me-64-hex-character-key"
+          },
+          "carrier": "wbstream",
+          "transport": {
+            "type": "datachannel"
+          },
+          "link": "direct",
+          "data": "data",
+          "dns": "1.1.1.1:53"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+/olcrtc-manager
+/olcrtc-manager.new
+/node_modules
+/deploy/docker/.env
+/deploy/docker/local
+/deploy/docker/bin/*
+!/deploy/docker/bin/.gitkeep
