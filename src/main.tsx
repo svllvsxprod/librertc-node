@@ -1155,10 +1155,6 @@ function App() {
                 fgColor="#0d0e13"
               />
             </div>
-            <div className="text-center">
-              <div className="eyebrow">Local QR payload</div>
-              <div className="mt-1 text-sm text-muted-foreground">Код генерируется в браузере без внешних сервисов.</div>
-            </div>
             <div className="max-w-full break-all rounded-lg border border-border bg-background/50 p-3 font-mono text-xs text-muted-foreground">
               {qrTarget.location.uri}
             </div>
