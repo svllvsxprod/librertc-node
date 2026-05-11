@@ -16,8 +16,8 @@ export default {
         destructive: "#ffb4ab",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
