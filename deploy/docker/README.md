@@ -57,6 +57,7 @@ http://127.0.0.1:18888/admin
 ## Safety Notes
 
 - Do not publish the panel to `0.0.0.0` without HTTPS and access control.
+- Direct public binding requires `LIBRERTC_ALLOW_PUBLIC_BIND=1`; keep `127.0.0.1` when using a reverse proxy.
 - Do not reuse Docker network or volume names from other projects.
 - This container needs network administration capabilities for namespaces, veth, iptables, and traffic limits.
 - The compose file does not edit host firewall or reverse proxy configuration.

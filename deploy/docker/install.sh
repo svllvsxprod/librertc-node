@@ -71,6 +71,7 @@ load_env() {
   : "${LIBRERTC_NODE_HOST_PORT:=18888}"
   : "${LIBRERTC_NODE_CONFIG_DIR:=./local}"
   : "${LIBRERTC_OLCRTC_BINARY:=deploy/docker/bin/olcrtc}"
+  : "${LIBRERTC_ALLOW_PUBLIC_BIND:=0}"
 }
 
 config_dir_abs() {
@@ -120,7 +121,9 @@ check_prerequisites() {
 
   case "$LIBRERTC_NODE_HOST_BIND" in
     127.0.0.1|localhost) ;;
-    *) die "LIBRERTC_NODE_HOST_BIND must stay localhost by default; configure reverse proxy instead" ;;
+    *)
+      [ "$LIBRERTC_ALLOW_PUBLIC_BIND" = "1" ] || die "public bind requires LIBRERTC_ALLOW_PUBLIC_BIND=1; prefer reverse proxy for production"
+      ;;
   esac
 
   case "$LIBRERTC_NODE_HOST_PORT" in
