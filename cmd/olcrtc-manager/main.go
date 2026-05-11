@@ -275,8 +275,9 @@ func run() error {
 	handler.Handle("/api/v1/health", http.HandlerFunc(apiV1HealthHandler(supervisor)))
 	handler.Handle("/api/v1/server/info", http.HandlerFunc(apiV1ServerInfoHandler(supervisor, listenAddr)))
 	handler.Handle("/api/v1/diagnostics", adminAuth(http.HandlerFunc(apiV1DiagnosticsHandler(supervisor, olcrtcPath))))
-	handler.Handle("/api/v1/clients", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor))))
-	handler.Handle("/api/v1/clients/", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor))))
+	handler.Handle("/api/v1/reload", adminAuth(http.HandlerFunc(apiV1ReloadHandler(reload))))
+	handler.Handle("/api/v1/clients", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor, configPath, olcrtcPath, reload))))
+	handler.Handle("/api/v1/clients/", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor, configPath, olcrtcPath, reload))))
 	handler.Handle("/api/reload", adminAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
@@ -2983,17 +2984,37 @@ func apiV1DiagnosticsHandler(supervisor *Supervisor, olcrtcPath string) http.Han
 	}
 }
 
-func apiV1ClientsHandler(supervisor *Supervisor) http.HandlerFunc {
+func apiV1ReloadHandler(reload func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !allowMethod(w, r, http.MethodGet) {
+		if !allowMethod(w, r, http.MethodPost) {
 			return
 		}
+		if err := reload(); err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "RELOAD_FAILED", err.Error())
+			return
+		}
+		writeAPIData(w, map[string]any{"reloaded": true})
+	}
+}
 
+func apiV1ClientsHandler(supervisor *Supervisor, configPath, olcrtcPath string, reload func() error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		clientID, action, ok := apiV1ClientPath(r.URL.Path)
 		if !ok {
 			writeAPIError(w, http.StatusNotFound, "CLIENT_ENDPOINT_NOT_FOUND", "Client endpoint not found")
 			return
 		}
+
+		if action != "" && action != "subscription" && action != "qr" {
+			writeAPIError(w, http.StatusNotFound, "CLIENT_ENDPOINT_NOT_FOUND", "Client endpoint not found")
+			return
+		}
+
+		if r.Method != http.MethodGet {
+			apiV1MutateClient(w, r, clientID, action, configPath, olcrtcPath, reload)
+			return
+		}
+
 		state := supervisor.State()
 
 		if clientID == "" {
@@ -3038,6 +3059,66 @@ func apiV1ClientsHandler(supervisor *Supervisor) http.HandlerFunc {
 		default:
 			writeAPIError(w, http.StatusNotFound, "CLIENT_ENDPOINT_NOT_FOUND", "Client endpoint not found")
 		}
+	}
+}
+
+func apiV1MutateClient(w http.ResponseWriter, r *http.Request, clientID, action, configPath, olcrtcPath string, reload func() error) {
+	if action != "" {
+		w.Header().Set("Allow", http.MethodGet)
+		writeAPIError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		if clientID != "" {
+			w.Header().Set("Allow", http.MethodGet+", "+http.MethodPut+", "+http.MethodPatch+", "+http.MethodDelete)
+			writeAPIError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed")
+			return
+		}
+		createdID, err := addClientFromRequest(r.Context(), configPath, olcrtcPath, r)
+		if err != nil {
+			writeAPIError(w, http.StatusBadRequest, "CLIENT_CREATE_FAILED", err.Error())
+			return
+		}
+		if err := reload(); err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "RELOAD_FAILED", err.Error())
+			return
+		}
+		writeJSONStatus(w, http.StatusCreated, map[string]any{"ok": true, "data": map[string]any{"client_id": createdID}})
+	case http.MethodPut, http.MethodPatch:
+		if clientID == "" {
+			w.Header().Set("Allow", http.MethodGet+", "+http.MethodPost)
+			writeAPIError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed")
+			return
+		}
+		if err := updateClientFromRequest(r.Context(), configPath, olcrtcPath, clientID, r); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "CLIENT_UPDATE_FAILED", err.Error())
+			return
+		}
+		if err := reload(); err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "RELOAD_FAILED", err.Error())
+			return
+		}
+		writeAPIData(w, map[string]any{"client_id": clientID, "updated": true})
+	case http.MethodDelete:
+		if clientID == "" {
+			w.Header().Set("Allow", http.MethodGet+", "+http.MethodPost)
+			writeAPIError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed")
+			return
+		}
+		if err := deleteClient(configPath, clientID); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "CLIENT_DELETE_FAILED", err.Error())
+			return
+		}
+		if err := reload(); err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "RELOAD_FAILED", err.Error())
+			return
+		}
+		writeAPIData(w, map[string]any{"client_id": clientID, "deleted": true})
+	default:
+		w.Header().Set("Allow", http.MethodGet+", "+http.MethodPost+", "+http.MethodPut+", "+http.MethodPatch+", "+http.MethodDelete)
+		writeAPIError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed")
 	}
 }
 

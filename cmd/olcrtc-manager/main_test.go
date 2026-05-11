@@ -312,7 +312,7 @@ func TestAPIV1ClientsListUsesStableEnvelope(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients", nil))
+	apiV1ClientsHandler(supervisor, "", "", nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -334,7 +334,7 @@ func TestAPIV1ClientDetailUsesStableEnvelope(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user", nil))
+	apiV1ClientsHandler(supervisor, "", "", nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -356,7 +356,7 @@ func TestAPIV1ClientSubscriptionUsesStableEnvelope(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user/subscription", nil))
+	apiV1ClientsHandler(supervisor, "", "", nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user/subscription", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -379,7 +379,7 @@ func TestAPIV1ClientQRReturnsRenderablePayload(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user/qr", nil))
+	apiV1ClientsHandler(supervisor, "", "", nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user/qr", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -401,13 +401,120 @@ func TestAPIV1ClientEndpointRejectsUnknownClient(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/missing/subscription", nil))
+	apiV1ClientsHandler(supervisor, "", "", nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/missing/subscription", nil))
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "CLIENT_NOT_FOUND") {
 		t.Fatalf("response missing stable error code: %s", rec.Body.String())
+	}
+}
+
+func TestAPIV1ClientUpdateMutatesConfigAndReloads(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	loc := testLocation("room-01", "Netherlands")
+	other := testLocation("room-02", "Germany")
+	other.ClientID = "other"
+	if err := saveConfigWithoutBackup(configPath, testConfig(loc, other)); err != nil {
+		t.Fatal(err)
+	}
+	reloads := 0
+	body := bytes.NewBufferString(`{"quota":{"speed_mbps":25},"carrier":"wbstream","transport":"datachannel","dns":"1.1.1.1:53","name":"Updated"}`)
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, "olcrtc", func() error {
+		reloads++
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/api/v1/clients/user", body))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if reloads != 1 {
+		t.Fatalf("reloads = %d, want 1", reloads)
+	}
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, ok := testClientByID(cfg, "user")
+	if !ok {
+		t.Fatalf("updated client not found: %#v", cfg.Clients)
+	}
+	if got := client.Quota.SpeedMbps; got != 25 {
+		t.Fatalf("speed_mbps = %d, want 25", got)
+	}
+	if got := client.Locations[0].Name; got != "Updated" {
+		t.Fatalf("location name = %q, want Updated", got)
+	}
+}
+
+func TestAPIV1ClientDeleteMutatesConfigAndReloads(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	loc := testLocation("room-01", "Netherlands")
+	other := testLocation("room-02", "Germany")
+	other.ClientID = "other"
+	if err := saveConfigWithoutBackup(configPath, testConfig(loc, other)); err != nil {
+		t.Fatal(err)
+	}
+	reloads := 0
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, "olcrtc", func() error {
+		reloads++
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/api/v1/clients/other", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if reloads != 1 {
+		t.Fatalf("reloads = %d, want 1", reloads)
+	}
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Clients) != 1 || cfg.Clients[0].ClientID != "user" {
+		t.Fatalf("clients after delete = %#v", cfg.Clients)
+	}
+}
+
+func TestAPIV1ClientCreateValidationUsesStableError(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfigWithoutBackup(configPath, testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, "olcrtc", func() error {
+		t.Fatal("reload must not run on failed create")
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/clients", bytes.NewBufferString(`{}`)))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "CLIENT_CREATE_FAILED") {
+		t.Fatalf("response missing stable error code: %s", rec.Body.String())
+	}
+}
+
+func TestAPIV1ReloadUsesStableEnvelope(t *testing.T) {
+	reloads := 0
+	rec := httptest.NewRecorder()
+
+	apiV1ReloadHandler(func() error {
+		reloads++
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/reload", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if reloads != 1 || !strings.Contains(rec.Body.String(), `"reloaded": true`) {
+		t.Fatalf("unexpected reload response reloads=%d body=%s", reloads, rec.Body.String())
 	}
 }
 
@@ -613,4 +720,13 @@ func testLocation(roomID, name string) Location {
 		Data:      "data",
 		DNS:       "1.1.1.1:53",
 	}
+}
+
+func testClientByID(cfg Config, clientID string) (Client, bool) {
+	for _, client := range cfg.Clients {
+		if client.ClientID == clientID {
+			return client, true
+		}
+	}
+	return Client{}, false
 }
