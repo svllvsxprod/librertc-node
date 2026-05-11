@@ -1652,20 +1652,33 @@ func (q *QuotaEnforcer) Run(ctx context.Context) {
 }
 
 func (q *QuotaEnforcer) Register(loc Location, quota Quota, p *process) error {
-	if p == nil || p.cmd == nil || p.cmd.Process == nil {
+	if p == nil {
 		return errors.New("process is not running")
 	}
 	key := locationKey(loc)
 	classID := quotaClassID(key)
-	cgroup := filepath.Join("/sys/fs/cgroup/net_cls,net_prio/olcrtc-manager", quotaSafeName(key))
-	dev := defaultRouteInterface(context.Background())
-	iface := ""
+
 	if p.netns != nil {
-		iface = p.netns.HostIf
+		q.mu.Lock()
+		q.rules[key] = quotaRule{ClientID: loc.ClientID, ClassID: classID, Iface: p.netns.HostIf}
+		q.mu.Unlock()
+		if quota.SpeedMbps > 0 {
+			applyNetnsSpeed(context.Background(), p.netns, quota.SpeedMbps)
+		} else {
+			_ = runCmd(context.Background(), "tc", "qdisc", "del", "dev", p.netns.HostIf, "root")
+			_ = runCmd(context.Background(), "ip", "netns", "exec", p.netns.Name, "tc", "qdisc", "del", "dev", p.netns.NsIf, "root")
+		}
+		return nil
 	}
 
+	if p.cmd == nil || p.cmd.Process == nil {
+		return errors.New("process is not running")
+	}
+	cgroup := filepath.Join("/sys/fs/cgroup/net_cls,net_prio/olcrtc-manager", quotaSafeName(key))
+	dev := defaultRouteInterface(context.Background())
+
 	q.mu.Lock()
-	q.rules[key] = quotaRule{ClientID: loc.ClientID, ClassID: classID, Cgroup: cgroup, Dev: dev, Iface: iface}
+	q.rules[key] = quotaRule{ClientID: loc.ClientID, ClassID: classID, Cgroup: cgroup, Dev: dev}
 	q.mu.Unlock()
 
 	if err := os.MkdirAll(cgroup, 0o755); err != nil {
@@ -1681,16 +1694,7 @@ func (q *QuotaEnforcer) Register(loc Location, quota Quota, p *process) error {
 	if err := q.iptables(context.Background(), "-I", "INPUT", "1", "-m", "cgroup", "--cgroup", quotaClassArg(classID), "-m", "comment", "--comment", "olcrtc-manager"); err != nil {
 		return err
 	}
-	if p.netns != nil {
-		if quota.SpeedMbps > 0 {
-			applyNetnsSpeed(context.Background(), p.netns, quota.SpeedMbps)
-		} else {
-			_ = runCmd(context.Background(), "tc", "qdisc", "del", "dev", p.netns.HostIf, "root")
-			_ = runCmd(context.Background(), "ip", "netns", "exec", p.netns.Name, "tc", "qdisc", "del", "dev", p.netns.NsIf, "root")
-		}
-		return nil
-	}
-	if quota.SpeedMbps > 0 && dev != "" && iface == "" {
+	if quota.SpeedMbps > 0 && dev != "" {
 		if err := q.applySpeedLimit(context.Background(), dev, classID, quota.SpeedMbps); err != nil {
 			log.Printf("speed limit unavailable for %s: %v", key, err)
 		}
