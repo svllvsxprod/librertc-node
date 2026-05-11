@@ -17,6 +17,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -274,6 +275,7 @@ func run() error {
 	handler.Handle("/api/v1/health", http.HandlerFunc(apiV1HealthHandler(supervisor)))
 	handler.Handle("/api/v1/server/info", http.HandlerFunc(apiV1ServerInfoHandler(supervisor, listenAddr)))
 	handler.Handle("/api/v1/diagnostics", adminAuth(http.HandlerFunc(apiV1DiagnosticsHandler(supervisor, olcrtcPath))))
+	handler.Handle("/api/v1/clients", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor))))
 	handler.Handle("/api/v1/clients/", adminAuth(http.HandlerFunc(apiV1ClientsHandler(supervisor))))
 	handler.Handle("/api/reload", adminAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -870,6 +872,27 @@ type LogLine struct {
 	Time   string `json:"time"`
 	Stream string `json:"stream"`
 	Line   string `json:"line"`
+}
+
+type apiV1ClientListItem struct {
+	ClientID        string `json:"client_id"`
+	Quota           Quota  `json:"quota"`
+	QuotaStatus     string `json:"quota_status"`
+	LocationCount   int    `json:"location_count"`
+	RunningCount    int    `json:"running_count"`
+	SubscriptionURL string `json:"subscription_url"`
+	QRURL           string `json:"qr_url"`
+}
+
+type apiV1ClientDetail struct {
+	ClientID        string          `json:"client_id"`
+	Quota           Quota           `json:"quota"`
+	QuotaStatus     string          `json:"quota_status"`
+	LocationCount   int             `json:"location_count"`
+	RunningCount    int             `json:"running_count"`
+	SubscriptionURL string          `json:"subscription_url"`
+	QRURL           string          `json:"qr_url"`
+	Locations       []LocationState `json:"locations"`
 }
 
 type addClientRequest struct {
@@ -2962,9 +2985,29 @@ func apiV1ClientsHandler(supervisor *Supervisor) http.HandlerFunc {
 			return
 		}
 
-		clientID, action, ok := apiV1ClientAction(r.URL.Path)
+		clientID, action, ok := apiV1ClientPath(r.URL.Path)
 		if !ok {
 			writeAPIError(w, http.StatusNotFound, "CLIENT_ENDPOINT_NOT_FOUND", "Client endpoint not found")
+			return
+		}
+		state := supervisor.State()
+
+		if clientID == "" {
+			writeAPIData(w, map[string]any{
+				"clients": apiV1ClientList(state),
+				"count":   len(state.Clients),
+			})
+			return
+		}
+
+		client, found := apiV1ClientDetailFor(state, clientID)
+		if !found {
+			writeAPIError(w, http.StatusNotFound, "CLIENT_NOT_FOUND", "Client not found")
+			return
+		}
+
+		if action == "" {
+			writeAPIData(w, client)
 			return
 		}
 
@@ -2994,16 +3037,70 @@ func apiV1ClientsHandler(supervisor *Supervisor) http.HandlerFunc {
 	}
 }
 
-func apiV1ClientAction(path string) (clientID, action string, ok bool) {
+func apiV1ClientPath(path string) (clientID, action string, ok bool) {
+	if strings.TrimSuffix(path, "/") == "/api/v1/clients" {
+		return "", "", true
+	}
 	rest := strings.TrimPrefix(path, "/api/v1/clients/")
 	parts := strings.Split(strings.Trim(rest, "/"), "/")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+	if len(parts) < 1 || len(parts) > 2 || parts[0] == "" {
 		return "", "", false
 	}
 	if strings.Contains(parts[0], "..") {
 		return "", "", false
 	}
+	if len(parts) == 2 && parts[1] == "" {
+		return "", "", false
+	}
+	if len(parts) == 1 {
+		return parts[0], "", true
+	}
 	return parts[0], parts[1], true
+}
+
+func apiV1ClientList(state State) []apiV1ClientListItem {
+	out := make([]apiV1ClientListItem, 0, len(state.Clients))
+	for _, client := range state.Clients {
+		detail := apiV1ClientDetailFromState(client)
+		out = append(out, apiV1ClientListItem{
+			ClientID:        detail.ClientID,
+			Quota:           detail.Quota,
+			QuotaStatus:     detail.QuotaStatus,
+			LocationCount:   detail.LocationCount,
+			RunningCount:    detail.RunningCount,
+			SubscriptionURL: detail.SubscriptionURL,
+			QRURL:           detail.QRURL,
+		})
+	}
+	return out
+}
+
+func apiV1ClientDetailFor(state State, clientID string) (apiV1ClientDetail, bool) {
+	for _, client := range state.Clients {
+		if client.ClientID == clientID {
+			return apiV1ClientDetailFromState(client), true
+		}
+	}
+	return apiV1ClientDetail{}, false
+}
+
+func apiV1ClientDetailFromState(client ClientState) apiV1ClientDetail {
+	running := 0
+	for _, loc := range client.Locations {
+		if loc.Running {
+			running++
+		}
+	}
+	return apiV1ClientDetail{
+		ClientID:        client.ClientID,
+		Quota:           client.Quota,
+		QuotaStatus:     quotaStatus(client.Quota, time.Now()),
+		LocationCount:   len(client.Locations),
+		RunningCount:    running,
+		SubscriptionURL: "/api/v1/clients/" + url.PathEscape(client.ClientID) + "/subscription",
+		QRURL:           "/api/v1/clients/" + url.PathEscape(client.ClientID) + "/qr",
+		Locations:       client.Locations,
+	}
 }
 
 func allowMethod(w http.ResponseWriter, r *http.Request, method string) bool {

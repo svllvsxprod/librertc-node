@@ -303,6 +303,50 @@ func TestAPIV1DiagnosticsDoesNotExposeLocationSecrets(t *testing.T) {
 	}
 }
 
+func TestAPIV1ClientsListUsesStableEnvelope(t *testing.T) {
+	supervisor := NewSupervisor("olcrtc", func(ctx context.Context, path string, loc Location) (*process, error) {
+		return &process{location: loc, logs: newLogBuffer(1), running: true}, nil
+	})
+	if err := supervisor.StartAll(context.Background(), testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`"ok": true`, `"count": 1`, `"client_id": "user"`, `"location_count": 1`, `"running_count": 1`, `"subscription_url": "/api/v1/clients/user/subscription"`, `"qr_url": "/api/v1/clients/user/qr"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("clients list missing %q: %s", want, body)
+		}
+	}
+}
+
+func TestAPIV1ClientDetailUsesStableEnvelope(t *testing.T) {
+	supervisor := NewSupervisor("olcrtc", func(ctx context.Context, path string, loc Location) (*process, error) {
+		return &process{location: loc, logs: newLogBuffer(1), running: true}, nil
+	})
+	if err := supervisor.StartAll(context.Background(), testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	apiV1ClientsHandler(supervisor).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/clients/user", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`"ok": true`, `"client_id": "user"`, `"quota_status": "active"`, `"locations"`, `"room_id": "room-01"`, `"uri": "olcrtc://`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("client detail missing %q: %s", want, body)
+		}
+	}
+}
+
 func TestAPIV1ClientSubscriptionUsesStableEnvelope(t *testing.T) {
 	supervisor := NewSupervisor("olcrtc", func(ctx context.Context, path string, loc Location) (*process, error) {
 		return &process{location: loc, logs: newLogBuffer(1), running: true}, nil
