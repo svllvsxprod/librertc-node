@@ -89,6 +89,10 @@ button:hover:not(:disabled) {
     pointer-events: none;
   }
 
+  .no-glass-line::before {
+    display: none;
+  }
+
   .brand-title {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     letter-spacing: -0.03em;

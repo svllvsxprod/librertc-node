@@ -879,7 +879,7 @@ function App() {
           <StatCard icon={<Activity className="h-4 w-4" />} label="Инстансы" value={state?.running_count ?? "..."} />
         </section>
 
-        <section className="glass-card mt-6 overflow-hidden rounded-[2rem] p-0">
+        <section className="glass-card no-glass-line mt-6 overflow-hidden rounded-[2rem] p-0">
           <div className="relative border-b border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,0,0.16),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(0,227,253,0.14),transparent_30%)] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
