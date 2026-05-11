@@ -918,9 +918,6 @@ function App() {
                   key={client.client_id}
                   className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] md:p-5"
                 >
-                  <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-secondary/10 blur-3xl" />
-                  <div className="pointer-events-none absolute -bottom-20 left-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-
                   <div className="relative flex flex-wrap items-start justify-between gap-4">
                     <div className="flex min-w-0 items-start gap-4">
                       <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-primary/35 bg-primary/10 shadow-[0_0_28px_rgba(255,215,0,0.16)]">
@@ -994,7 +991,7 @@ function App() {
                     {client.locations.map((loc) => (
                       <div
                         key={`${client.client_id}-${loc.room_id}-${loc.transport}`}
-                        className="rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur-xl"
+                        className="rounded-2xl border border-white/10 bg-black/20 p-4"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
