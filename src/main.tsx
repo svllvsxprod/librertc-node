@@ -17,6 +17,23 @@ import {
 } from "lucide-react";
 import "./index.css";
 
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative grid h-11 w-11 place-items-center rounded-full border border-secondary/50 bg-secondary/10 shadow-[0_0_28px_rgba(0,227,253,0.22)]">
+        <div className="absolute inset-1 rounded-full border border-primary/50" />
+        <span className="brand-title text-sm font-bold text-primary">LR</span>
+      </div>
+      {!compact && (
+        <div>
+          <div className="eyebrow">LibreRTC</div>
+          <div className="brand-title text-lg font-semibold text-foreground">Node Console</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type LocationState = {
   name: string;
   room_id: string;
@@ -214,21 +231,21 @@ function StatCard({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="glass-card rounded-xl p-5">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold tracking-normal">{value}</div>
+      <div className="brand-title mt-2 text-4xl font-bold tracking-tight text-foreground">{value}</div>
     </div>
   );
 }
 
 function HeaderMetric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="grid h-9 min-w-24 content-center rounded-md border border-border bg-card px-3">
-      <div className="text-[10px] uppercase leading-3 text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold leading-4">{value}</div>
+    <div className="glass-card grid h-11 min-w-28 content-center rounded-full px-4">
+      <div className="eyebrow leading-3">{label}</div>
+      <div className="brand-title text-sm font-semibold leading-4 text-foreground">{value}</div>
     </div>
   );
 }
@@ -243,12 +260,12 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-xl">
+      <div className="glass-card w-full max-w-lg rounded-2xl shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="text-lg font-semibold tracking-normal">{title}</h2>
+          <h2 className="brand-title text-lg font-semibold tracking-tight">{title}</h2>
           <button
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-muted hover:bg-muted/80"
+            className="secondary-glow inline-flex h-9 w-9 items-center justify-center rounded-full border"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -287,21 +304,20 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-5">
-      <form className="grid w-full max-w-sm gap-4 rounded-lg border border-border bg-card p-5" onSubmit={submit}>
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/15 text-primary">
-            <Lock className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-normal">OlcRTC Manager</h1>
-            <div className="text-sm text-muted-foreground">{setupRequired ? "Первичная настройка" : "Вход в панель"}</div>
-          </div>
+    <div className="grid min-h-screen place-items-center px-5">
+      <form className="glass-card grid w-full max-w-md gap-5 rounded-2xl p-6" onSubmit={submit}>
+        <div className="flex items-center justify-between gap-4">
+          <BrandMark />
+          <Lock className="h-5 w-5 text-secondary" />
+        </div>
+        <div>
+          <h1 className="brand-title text-3xl font-semibold tracking-tight text-primary">{setupRequired ? "Первичная настройка" : "Вход в панель"}</h1>
+          <div className="mt-1 text-sm text-muted-foreground">Управление клиентами, туннелями и подписками LibreRTC Node.</div>
         </div>
         <label className="grid gap-2 text-sm text-muted-foreground">
           Логин
           <input
-            className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+            className="h-11 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,227,253,0.15)]"
             value={user}
             onChange={(event) => setUser(event.target.value)}
             autoComplete="username"
@@ -310,7 +326,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
         <label className="grid gap-2 text-sm text-muted-foreground">
           Пароль
           <input
-            className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+            className="h-11 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,227,253,0.15)]"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -321,7 +337,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
           <label className="grid gap-2 text-sm text-muted-foreground">
             Повтор пароля
             <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+              className="h-11 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,227,253,0.15)]"
               type="password"
               value={repeat}
               onChange={(event) => setRepeat(event.target.value)}
@@ -331,7 +347,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
         )}
         {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-black hover:bg-primary/90 disabled:opacity-60"
+          className="primary-glow inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-60"
           disabled={busy}
         >
           <Lock className="h-4 w-4" />
@@ -746,9 +762,9 @@ function App() {
       );
     }, "Логи скопированы");
 
-  const copyOlcBoxLink = (clientID: string, uri: string) =>
+  const copyClientURI = (clientID: string, uri: string) =>
     runAction(async () => {
-      if (!uri) throw new Error("OlcBox ссылка не найдена");
+      if (!uri) throw new Error("URI клиента не найден");
       await navigator.clipboard.writeText(uri);
     }, `Ссылка для ${clientID} скопирована`);
 
@@ -779,23 +795,21 @@ function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-background/95">
+      <header className="glass-shell sticky top-0 z-40 border-b">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-normal">OlcRTC Manager</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <HeaderMetric label="Panel mem" value={formatBytes(metrics?.memory.heap_alloc_bytes)} />
-            <HeaderMetric label="Panel PID" value={metrics?.manager.pid ?? "..."} />
+          <BrandMark />
+          <div className="flex flex-wrap items-center gap-2">
+            <HeaderMetric label="Memory" value={formatBytes(metrics?.memory.heap_alloc_bytes)} />
+            <HeaderMetric label="Manager PID" value={metrics?.manager.pid ?? "..."} />
             <button
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+              className="secondary-glow inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm"
               onClick={() => setShowPassword(true)}
             >
               <KeyRound className="h-4 w-4" />
               Пароль
             </button>
             <button
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80 disabled:opacity-60"
+              className="secondary-glow inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm disabled:opacity-60"
               disabled={busy}
               onClick={() =>
                 runAction(async () => {
@@ -808,7 +822,7 @@ function App() {
               Обновить
             </button>
             <button
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+              className="secondary-glow inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm"
               onClick={logout}
             >
               <LogOut className="h-4 w-4" />
@@ -818,21 +832,40 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-6">
-        <section className="grid gap-3 md:grid-cols-3">
-          <StatCard icon={<Server className="h-4 w-4" />} label="Профиль" value={state?.name ?? "..."} />
+      <section className="glass-shell sticky top-[73px] z-30 border-b px-5 py-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-6">
+          <div>
+            <div className="eyebrow">Runtime dashboard</div>
+            <h1 className="brand-title mt-2 max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-primary md:text-5xl">
+              Управляй туннелями LibreRTC из одной панели.
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Клиенты, подписки, quota, runtime logs и live-инстансы на этом server node.
+            </p>
+          </div>
+          <button className="primary-glow inline-flex h-12 items-center gap-2 rounded-lg px-5 text-sm font-semibold" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Создать клиента
+          </button>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-7xl px-5 py-8">
+        <section className="grid gap-4 md:grid-cols-3">
+          <StatCard icon={<Server className="h-4 w-4 text-secondary" />} label="Профиль" value={state?.name ?? "..."} />
           <StatCard icon={<Users className="h-4 w-4" />} label="Клиенты" value={state?.client_count ?? "..."} />
           <StatCard icon={<Activity className="h-4 w-4" />} label="Инстансы" value={state?.running_count ?? "..."} />
         </section>
 
-        <section className="mt-4 rounded-lg border border-border bg-card p-4">
+        <section className="glass-card mt-6 rounded-2xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-normal">Клиенты</h2>
+              <div className="eyebrow">Active subscriptions</div>
+              <h2 className="brand-title mt-1 text-2xl font-semibold tracking-tight">Клиенты</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-black hover:bg-primary/90"
+                className="primary-glow inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold"
                 onClick={openCreate}
               >
                 <Plus className="h-4 w-4" />
@@ -843,8 +876,8 @@ function App() {
 
           <div className="mt-3 min-h-5 text-sm text-muted-foreground">{notice}</div>
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-sm">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-border/70 bg-background/35">
+            <table className="w-full min-w-[920px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th className="py-3 pr-3 font-medium">Клиент</th>
@@ -861,7 +894,7 @@ function App() {
               <tbody>
                 {clients.flatMap((client) =>
                   client.locations.map((loc, index) => (
-                    <tr key={`${client.client_id}-${loc.room_id}-${loc.transport}`} className="border-b border-border/70">
+                    <tr key={`${client.client_id}-${loc.room_id}-${loc.transport}`} className="border-b border-border/70 transition-colors hover:bg-white/[0.03]">
                       <td className="py-3 pr-3 font-medium">{index === 0 ? client.client_id : ""}</td>
                       <td className="py-3 pr-3">{loc.name || "Default"}</td>
                       <td className="max-w-[220px] truncate py-3 pr-3 text-muted-foreground">{loc.room_id}</td>
@@ -882,7 +915,7 @@ function App() {
                         {
                           <div className="flex justify-end gap-2">
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => restartLocation(client.client_id, loc)}
                             >
@@ -890,21 +923,21 @@ function App() {
                               Restart
                             </button>
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => regenerateRoom(client.client_id)}
                             >
                               Room
                             </button>
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => rotateKey(client.client_id)}
                             >
                               Key
                             </button>
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => openLogs(client.client_id, loc)}
                             >
@@ -912,15 +945,15 @@ function App() {
                               Логи
                             </button>
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
-                              onClick={() => copyOlcBoxLink(client.client_id, loc.uri)}
+                              onClick={() => copyClientURI(client.client_id, loc.uri)}
                             >
                               <Copy className="h-4 w-4" />
-                              OlcBox
+                              URI
                             </button>
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => setQrTarget({ clientID: client.client_id, location: loc })}
                             >
@@ -929,14 +962,14 @@ function App() {
                             {index === 0 && (
                               <>
                                 <button
-                                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                                  className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                                   disabled={busy}
                                   onClick={() => copySubscription(client.client_id)}
                                 >
                                   Sub
                                 </button>
                                 <button
-                                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                                  className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                                   disabled={busy}
                                   onClick={() => downloadSubscription(client.client_id)}
                                 >
@@ -945,7 +978,7 @@ function App() {
                               </>
                             )}
                             <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-2 text-sm hover:bg-muted disabled:opacity-60"
+                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
                               disabled={busy}
                               onClick={() => openEdit(client)}
                             >
@@ -987,13 +1020,13 @@ function App() {
             <ClientFormFields form={createForm} setForm={setCreateForm} includeClientID />
             <div className="mt-5 flex justify-end gap-2">
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
                 onClick={() => setCreateOpen(false)}
               >
                 Отмена
               </button>
               <button
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-black hover:bg-primary/90 disabled:opacity-60"
+                className="primary-glow inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold disabled:opacity-60"
                 disabled={busy}
                 onClick={addClient}
               >
@@ -1009,18 +1042,18 @@ function App() {
         <Modal title={`Редактировать ${editClient.client_id}`} onClose={() => setEditClient(null)}>
           <div className="p-5">
             <ClientFormFields form={editForm} setForm={setEditForm} includeClientID={false} />
-            <div className="mt-3 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
+            <div className="mt-3 rounded-lg border border-border bg-background/50 p-3 text-sm text-muted-foreground">
               При изменении carrier или DNS будет создан новый room.
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
                 onClick={() => setEditClient(null)}
               >
                 Отмена
               </button>
               <button
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-black hover:bg-primary/90 disabled:opacity-60"
+                className="primary-glow inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold disabled:opacity-60"
                 disabled={busy}
                 onClick={updateClient}
               >
@@ -1035,26 +1068,27 @@ function App() {
       {qrTarget && (
         <Modal title={`QR ${qrTarget.clientID}`} onClose={() => setQrTarget(null)}>
           <div className="grid justify-items-center gap-4 p-5">
-            <img
-              className="h-64 w-64 rounded-md bg-white p-2"
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrTarget.location.uri)}`}
-              alt="QR"
-            />
-            <div className="max-w-full break-all rounded-md border border-border bg-background p-3 font-mono text-xs text-muted-foreground">
+            <div className="grid h-64 w-64 place-items-center rounded-2xl border border-secondary/40 bg-secondary/10 p-6 text-center shadow-[0_0_42px_rgba(0,227,253,0.18)]">
+              <div>
+                <div className="brand-title text-4xl font-bold text-secondary">QR</div>
+                <div className="mt-2 text-sm text-muted-foreground">Payload is rendered locally below. Generate image client-side in the redesign pass.</div>
+              </div>
+            </div>
+            <div className="max-w-full break-all rounded-lg border border-border bg-background/50 p-3 font-mono text-xs text-muted-foreground">
               {qrTarget.location.uri}
             </div>
             <div className="flex gap-2">
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
-                onClick={() => copyOlcBoxLink(qrTarget.clientID, qrTarget.location.uri)}
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
+                onClick={() => copyClientURI(qrTarget.clientID, qrTarget.location.uri)}
               >
                 Копировать URI
               </button>
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
                 onClick={() => copySubscription(qrTarget.clientID)}
               >
-                Копировать Sub
+                Копировать подписку
               </button>
             </div>
           </div>
@@ -1067,7 +1101,7 @@ function App() {
             <label className="grid gap-2 text-sm text-muted-foreground">
               Текущий пароль
               <input
-                className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+                className="h-10 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary"
                 type="password"
                 value={passwordForm.current}
                 onChange={(event) => setPasswordForm({ ...passwordForm, current: event.target.value })}
@@ -1077,7 +1111,7 @@ function App() {
             <label className="grid gap-2 text-sm text-muted-foreground">
               Новый пароль
               <input
-                className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+                className="h-10 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary"
                 type="password"
                 value={passwordForm.next}
                 onChange={(event) => setPasswordForm({ ...passwordForm, next: event.target.value })}
@@ -1087,7 +1121,7 @@ function App() {
             <label className="grid gap-2 text-sm text-muted-foreground">
               Повтор нового пароля
               <input
-                className="h-10 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:border-primary"
+                className="h-10 rounded-lg border border-border bg-background/70 px-3 text-foreground outline-none focus:border-secondary"
                 type="password"
                 value={passwordForm.repeat}
                 onChange={(event) => setPasswordForm({ ...passwordForm, repeat: event.target.value })}
@@ -1096,13 +1130,13 @@ function App() {
             </label>
             <div className="flex justify-end gap-2">
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
                 onClick={() => setShowPassword(false)}
               >
                 Отмена
               </button>
               <button
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-black hover:bg-primary/90 disabled:opacity-60"
+                className="primary-glow inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold disabled:opacity-60"
                 disabled={busy}
                 onClick={changePassword}
               >
@@ -1117,7 +1151,7 @@ function App() {
       {logTarget && (
         <Modal title={`Логи ${logTarget.clientID}`} onClose={() => setLogTarget(null)}>
           <div className="p-5">
-            <div className="grid gap-2 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
+            <div className="grid gap-2 rounded-lg border border-border bg-background/50 p-3 text-sm text-muted-foreground">
               <div>Статус: {logTarget.location.runtime.status}</div>
               {logTarget.location.runtime.pid && <div>PID: {logTarget.location.runtime.pid}</div>}
               {logTarget.location.runtime.started_at && <div>Started: {logTarget.location.runtime.started_at}</div>}
@@ -1127,7 +1161,7 @@ function App() {
               )}
             </div>
 
-            <div className="mt-4 max-h-[420px] overflow-auto rounded-md border border-border bg-black p-3 font-mono text-xs text-slate-100">
+            <div className="mt-4 max-h-[420px] overflow-auto rounded-lg border border-border bg-black/80 p-3 font-mono text-xs text-slate-100 shadow-inner">
               {logs.length === 0 ? (
                 <div className="text-muted-foreground">Логов пока нет</div>
               ) : (
@@ -1144,13 +1178,13 @@ function App() {
 
             <div className="mt-5 flex justify-end gap-2">
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm"
                 onClick={() => openLogs(logTarget.clientID, logTarget.location)}
               >
                 Обновить
               </button>
               <button
-                className="h-9 rounded-md border border-border bg-muted px-3 text-sm hover:bg-muted/80 disabled:opacity-60"
+                className="secondary-glow h-9 rounded-md border px-3 text-sm disabled:opacity-60"
                 disabled={logs.length === 0 || busy}
                 onClick={copyLogs}
               >

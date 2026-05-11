@@ -5,14 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(214 20% 22%)",
-        background: "hsl(220 20% 8%)",
-        foreground: "hsl(210 22% 94%)",
-        muted: "hsl(218 16% 16%)",
-        "muted-foreground": "hsl(215 13% 66%)",
-        card: "hsl(220 18% 11%)",
-        primary: "hsl(172 72% 44%)",
-        destructive: "hsl(4 82% 62%)",
+        border: "rgba(255,255,255,0.12)",
+        background: "#121318",
+        foreground: "#e3e1e9",
+        muted: "rgba(52,52,58,0.25)",
+        "muted-foreground": "#d0c6ab",
+        card: "rgba(52,52,58,0.18)",
+        primary: "#ffd700",
+        secondary: "#00e3fd",
+        destructive: "#ffb4ab",
+      },
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
