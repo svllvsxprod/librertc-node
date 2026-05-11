@@ -221,6 +221,12 @@ function quotaText(quota?: Quota) {
   return parts.length ? parts.join(" · ") : "none";
 }
 
+function quotaPercent(quota?: Quota) {
+  if (!quota?.traffic_gb) return undefined;
+  const used = quota.used_bytes ? quota.used_bytes / 1024 / 1024 / 1024 : quota.used_gb ?? 0;
+  return Math.max(0, Math.min(100, (used / quota.traffic_gb) * 100));
+}
+
 function StatCard({
   icon,
   label,
@@ -857,159 +863,218 @@ function App() {
           <StatCard icon={<Activity className="h-4 w-4" />} label="Инстансы" value={state?.running_count ?? "..."} />
         </section>
 
-        <section className="glass-card mt-6 rounded-2xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="eyebrow">Active subscriptions</div>
-              <h2 className="brand-title mt-1 text-2xl font-semibold tracking-tight">Клиенты</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
+        <section className="glass-card mt-6 overflow-hidden rounded-[2rem] p-0">
+          <div className="relative border-b border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,0,0.16),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(0,227,253,0.14),transparent_30%)] p-5 md:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="eyebrow">Subscription control</div>
+                <h2 className="brand-title mt-1 text-3xl font-semibold tracking-tight text-foreground">Клиенты</h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  Не таблица, а рабочая карта подключений: квоты, локации, runtime и быстрые операции собраны по каждому клиенту.
+                </p>
+              </div>
               <button
-                className="primary-glow inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold"
+                className="primary-glow inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold"
                 onClick={openCreate}
               >
                 <Plus className="h-4 w-4" />
-                Создать клиента
+                Новый клиент
               </button>
             </div>
+            <div className="mt-4 min-h-5 text-sm text-muted-foreground">{notice}</div>
           </div>
 
-          <div className="mt-3 min-h-5 text-sm text-muted-foreground">{notice}</div>
+          <div className="grid gap-4 p-4 md:p-5">
+            {clients.length === 0 && (
+              <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-secondary/40 bg-secondary/10 text-secondary">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="brand-title mt-4 text-xl font-semibold">Клиентов пока нет</h3>
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                  Создай первого клиента, чтобы получить подписку, URI и runtime-инстанс.
+                </p>
+              </div>
+            )}
 
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border/70 bg-background/35">
-            <table className="w-full min-w-[920px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="py-3 pr-3 font-medium">Клиент</th>
-                  <th className="py-3 pr-3 font-medium">Локация</th>
-                  <th className="py-3 pr-3 font-medium">Room</th>
-                  <th className="py-3 pr-3 font-medium">Carrier</th>
-                  <th className="py-3 pr-3 font-medium">Transport</th>
-                  <th className="py-3 pr-3 font-medium">Квота</th>
-                  <th className="py-3 pr-3 font-medium">DNS</th>
-                  <th className="py-3 pr-3 font-medium">Статус</th>
-                  <th className="py-3 text-right font-medium">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.flatMap((client) =>
-                  client.locations.map((loc, index) => (
-                    <tr key={`${client.client_id}-${loc.room_id}-${loc.transport}`} className="border-b border-border/70 transition-colors hover:bg-white/[0.03]">
-                      <td className="py-3 pr-3 font-medium">{index === 0 ? client.client_id : ""}</td>
-                      <td className="py-3 pr-3">{loc.name || "Default"}</td>
-                      <td className="max-w-[220px] truncate py-3 pr-3 text-muted-foreground">{loc.room_id}</td>
-                      <td className="py-3 pr-3">{loc.carrier}</td>
-                      <td className="py-3 pr-3">{loc.transport}</td>
-                      <td className="py-3 pr-3 text-muted-foreground">{index === 0 ? quotaText(client.quota) : ""}</td>
-                      <td className="py-3 pr-3 text-muted-foreground">{loc.dns}</td>
-                      <td className="py-3 pr-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                            loc.runtime.running ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
-                          }`}
-                        >
-                          {loc.runtime.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => restartLocation(client.client_id, loc)}
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                              Restart
-                            </button>
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => regenerateRoom(client.client_id)}
-                            >
-                              Room
-                            </button>
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => rotateKey(client.client_id)}
-                            >
-                              Key
-                            </button>
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => openLogs(client.client_id, loc)}
-                            >
-                              <Terminal className="h-4 w-4" />
-                              Логи
-                            </button>
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => copyClientURI(client.client_id, loc.uri)}
-                            >
-                              <Copy className="h-4 w-4" />
-                              URI
-                            </button>
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => setQrTarget({ clientID: client.client_id, location: loc })}
-                            >
-                              QR
-                            </button>
-                            {index === 0 && (
-                              <>
-                                <button
-                                  className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                                  disabled={busy}
-                                  onClick={() => copySubscription(client.client_id)}
-                                >
-                                  Sub
-                                </button>
-                                <button
-                                  className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                                  disabled={busy}
-                                  onClick={() => downloadSubscription(client.client_id)}
-                                >
-                                  Export
-                                </button>
-                              </>
-                            )}
-                            <button
-                              className="secondary-glow inline-flex h-8 items-center gap-2 rounded-md border px-2 text-sm disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => openEdit(client)}
-                            >
-                              <Edit3 className="h-4 w-4" />
-                              Edit
-                            </button>
-                            <button
-                              className="inline-flex h-8 items-center gap-2 rounded-md border border-destructive/40 px-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-60"
-                              disabled={busy}
-                              onClick={() => deleteClient(client.client_id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Удалить
-                            </button>
-                            {client.locations.length > 1 && (
-                              <button
-                                className="inline-flex h-8 items-center gap-2 rounded-md border border-destructive/40 px-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-60"
-                                disabled={busy}
-                                onClick={() => deleteLocation(client.client_id, loc)}
+            {clients.map((client) => {
+              const quota = quotaPercent(client.quota);
+              const runningLocations = client.locations.filter((loc) => loc.runtime.running).length;
+
+              return (
+                <article
+                  key={client.client_id}
+                  className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] md:p-5"
+                >
+                  <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-secondary/10 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-20 left-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+
+                  <div className="relative flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-4">
+                      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-primary/35 bg-primary/10 shadow-[0_0_28px_rgba(255,215,0,0.16)]">
+                        <span className="brand-title text-lg font-bold text-primary">{client.client_id.slice(0, 2).toUpperCase()}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="brand-title truncate text-2xl font-semibold text-foreground">{client.client_id}</h3>
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-muted-foreground">
+                            {runningLocations}/{client.locations.length} online
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">{quotaText(client.quota)}</span>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">{client.locations.length} location(s)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        className="secondary-glow inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => copySubscription(client.client_id)}
+                      >
+                        <Copy className="h-4 w-4" />
+                        Sub
+                      </button>
+                      <button
+                        className="secondary-glow h-9 rounded-full border px-3 text-sm disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => downloadSubscription(client.client_id)}
+                      >
+                        Export
+                      </button>
+                      <button
+                        className="secondary-glow inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => openEdit(client)}
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        className="inline-flex h-9 items-center gap-2 rounded-full border border-destructive/40 px-3 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => deleteClient(client.client_id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+
+                  {quota !== undefined && (
+                    <div className="relative mt-5">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Traffic quota</span>
+                        <span>{quota.toFixed(1)}%</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-[linear-gradient(90deg,var(--primary),var(--secondary))] shadow-[0_0_18px_rgba(255,215,0,0.35)]"
+                          style={{ width: `${quota}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative mt-5 grid gap-3 lg:grid-cols-2">
+                    {client.locations.map((loc) => (
+                      <div
+                        key={`${client.client_id}-${loc.room_id}-${loc.transport}`}
+                        className="rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur-xl"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                                  loc.runtime.running ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"
+                                }`}
                               >
-                                -Loc
-                              </button>
-                            )}
+                                {loc.runtime.status}
+                              </span>
+                              <span className="text-sm font-medium text-foreground">{loc.name || "Default"}</span>
+                            </div>
+                            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                              <div className="rounded-xl bg-white/[0.035] p-3">
+                                <div className="eyebrow">Room</div>
+                                <div className="mt-1 max-w-full truncate font-mono text-[11px] text-foreground">{loc.room_id}</div>
+                              </div>
+                              <div className="rounded-xl bg-white/[0.035] p-3">
+                                <div className="eyebrow">Route</div>
+                                <div className="mt-1 text-foreground">{loc.carrier} / {loc.transport}</div>
+                              </div>
+                              <div className="rounded-xl bg-white/[0.035] p-3 sm:col-span-2">
+                                <div className="eyebrow">DNS</div>
+                                <div className="mt-1 font-mono text-[11px] text-foreground">{loc.dns}</div>
+                              </div>
+                            </div>
                           </div>
-                        }
-                      </td>
-                    </tr>
-                  )),
-                )}
-              </tbody>
-            </table>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            className="secondary-glow inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => restartLocation(client.client_id, loc)}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Restart
+                          </button>
+                          <button
+                            className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => regenerateRoom(client.client_id)}
+                          >
+                            Room
+                          </button>
+                          <button
+                            className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => rotateKey(client.client_id)}
+                          >
+                            Key
+                          </button>
+                          <button
+                            className="secondary-glow inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => openLogs(client.client_id, loc)}
+                          >
+                            <Terminal className="h-3.5 w-3.5" />
+                            Логи
+                          </button>
+                          <button
+                            className="secondary-glow inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => copyClientURI(client.client_id, loc.uri)}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            URI
+                          </button>
+                          <button
+                            className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
+                            disabled={busy}
+                            onClick={() => setQrTarget({ clientID: client.client_id, location: loc })}
+                          >
+                            QR
+                          </button>
+                          {client.locations.length > 1 && (
+                            <button
+                              className="inline-flex h-8 items-center gap-2 rounded-full border border-destructive/40 px-3 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                              disabled={busy}
+                              onClick={() => deleteLocation(client.client_id, loc)}
+                            >
+                              -Loc
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       </main>
