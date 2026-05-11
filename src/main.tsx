@@ -862,18 +862,10 @@ function App() {
         </div>
       </header>
 
-      <section className="glass-shell sticky top-[73px] z-30 border-b px-5 py-8">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-6">
-          <div>
-            <div className="eyebrow">Runtime dashboard</div>
-            <h1 className="brand-title mt-2 max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-primary md:text-5xl">
-              Управляй туннелями LibreRTC из одной панели.
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Клиенты, подписки, quota, runtime logs и live-инстансы на этом server node.
-            </p>
-          </div>
-          <button className="primary-glow inline-flex h-12 items-center gap-2 rounded-lg px-5 text-sm font-semibold" onClick={openCreate}>
+      <section className="glass-shell sticky top-[73px] z-30 border-b px-5 py-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+          <h1 className="brand-title text-2xl font-semibold tracking-tight text-foreground">Панель управления</h1>
+          <button className="primary-glow inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Создать клиента
           </button>
@@ -891,11 +883,7 @@ function App() {
           <div className="relative border-b border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,0,0.16),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(0,227,253,0.14),transparent_30%)] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="eyebrow">Subscription control</div>
-                <h2 className="brand-title mt-1 text-3xl font-semibold tracking-tight text-foreground">Клиенты</h2>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  Не таблица, а рабочая карта подключений: квоты, локации, runtime и быстрые операции собраны по каждому клиенту.
-                </p>
+                <h2 className="brand-title text-3xl font-semibold tracking-tight text-foreground">Клиенты</h2>
               </div>
               <button
                 className="primary-glow inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold"
