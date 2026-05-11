@@ -167,8 +167,8 @@ case "$cmd" in
     compose down
     ;;
   restart)
-    "$0" stop
-    "$0" start
+    sh "$0" stop
+    sh "$0" start
     ;;
   status)
     ensure_env
