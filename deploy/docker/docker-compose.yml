@@ -20,6 +20,7 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_ADMIN
+    privileged: true
     devices:
       - /dev/net/tun:/dev/net/tun
     security_opt:
