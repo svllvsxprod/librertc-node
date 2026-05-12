@@ -1539,6 +1539,7 @@ func (p *process) markExited(err error) {
 type Metrics struct {
 	Runtime  string        `json:"runtime"`
 	Go       GoMetrics     `json:"go"`
+	Host     HostMetrics   `json:"host"`
 	Memory   MemoryMetrics `json:"memory"`
 	Manager  RuntimeState  `json:"manager"`
 	Children []ChildMetric `json:"children"`
@@ -1557,6 +1558,16 @@ type MemoryMetrics struct {
 	HeapAllocBytes  uint64 `json:"heap_alloc_bytes"`
 	HeapInuseBytes  uint64 `json:"heap_inuse_bytes"`
 	StackInuseBytes uint64 `json:"stack_inuse_bytes"`
+}
+
+type HostMetrics struct {
+	CPUCount             int     `json:"cpu_count"`
+	Load1                float64 `json:"load1"`
+	LoadPercent          float64 `json:"load_percent"`
+	MemoryTotalBytes     uint64  `json:"memory_total_bytes"`
+	MemoryUsedBytes      uint64  `json:"memory_used_bytes"`
+	MemoryUsedPercent    float64 `json:"memory_used_percent"`
+	MemoryAvailableBytes uint64  `json:"memory_available_bytes"`
 }
 
 type ChildMetric struct {
@@ -1579,6 +1590,7 @@ func collectMetrics(supervisor *Supervisor) Metrics {
 			Arch:       runtime.GOARCH,
 			Goroutines: runtime.NumGoroutine(),
 		},
+		Host: collectHostMetrics(),
 		Memory: MemoryMetrics{
 			AllocBytes:      mem.Alloc,
 			SysBytes:        mem.Sys,
@@ -1611,6 +1623,71 @@ func collectMetrics(supervisor *Supervisor) Metrics {
 			strings.Join([]string{metrics.Children[j].ClientID, metrics.Children[j].RoomID, metrics.Children[j].Transport}, ":")
 	})
 	return metrics
+}
+
+func collectHostMetrics() HostMetrics {
+	cpuCount := runtime.NumCPU()
+	metrics := HostMetrics{CPUCount: cpuCount}
+	if load, ok := readLoadAverage(); ok {
+		metrics.Load1 = load
+		if cpuCount > 0 {
+			metrics.LoadPercent = minFloat(100, load/float64(cpuCount)*100)
+		}
+	}
+	if total, available, ok := readMemoryInfo(); ok {
+		used := total - available
+		metrics.MemoryTotalBytes = total
+		metrics.MemoryAvailableBytes = available
+		metrics.MemoryUsedBytes = used
+		if total > 0 {
+			metrics.MemoryUsedPercent = float64(used) / float64(total) * 100
+		}
+	}
+	return metrics
+}
+
+func readLoadAverage() (float64, bool) {
+	data, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return 0, false
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return 0, false
+	}
+	load, err := strconv.ParseFloat(fields[0], 64)
+	return load, err == nil
+}
+
+func readMemoryInfo() (total, available uint64, ok bool) {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0, 0, false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		value, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			continue
+		}
+		switch fields[0] {
+		case "MemTotal:":
+			total = value * 1024
+		case "MemAvailable:":
+			available = value * 1024
+		}
+	}
+	return total, available, total > 0 && available > 0
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 type quotaRule struct {

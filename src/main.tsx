@@ -91,6 +91,15 @@ type Metrics = {
     version: string;
     goroutines: number;
   };
+  host: {
+    cpu_count: number;
+    load1: number;
+    load_percent: number;
+    memory_total_bytes: number;
+    memory_used_bytes: number;
+    memory_used_percent: number;
+    memory_available_bytes: number;
+  };
   memory: {
     alloc_bytes: number;
     sys_bytes: number;
@@ -193,7 +202,13 @@ function payloadForSubmit(payload: Record<string, string>) {
 function formatBytes(bytes?: number) {
   if (!bytes) return "...";
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+}
+
+function formatPercent(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "...";
+  return `${value.toFixed(0)}%`;
 }
 
 function subscriptionURL(clientID: string) {
@@ -862,21 +877,11 @@ function App() {
         </div>
       </header>
 
-      <section className="glass-shell stable-surface sticky top-[73px] z-30 border-b px-5 py-4">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-          <h1 className="brand-title text-2xl font-semibold tracking-tight text-foreground">Панель управления</h1>
-          <button className="primary-glow inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Создать клиента
-          </button>
-        </div>
-      </section>
-
       <main className="mx-auto max-w-7xl px-5 py-8">
         <section className="grid gap-4 md:grid-cols-3">
-          <StatCard icon={<Server className="h-4 w-4 text-secondary" />} label="Профиль" value={state?.name ?? "..."} />
           <StatCard icon={<Users className="h-4 w-4" />} label="Клиенты" value={state?.client_count ?? "..."} />
-          <StatCard icon={<Activity className="h-4 w-4" />} label="Инстансы" value={state?.running_count ?? "..."} />
+          <StatCard icon={<Activity className="h-4 w-4" />} label="CPU" value={formatPercent(metrics?.host.load_percent)} />
+          <StatCard icon={<Server className="h-4 w-4 text-secondary" />} label="RAM" value={formatPercent(metrics?.host.memory_used_percent)} />
         </section>
 
         <section className="glass-card stable-panel no-glass-line mt-6 overflow-hidden rounded-[2rem] p-0">
