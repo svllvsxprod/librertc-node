@@ -24,6 +24,28 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: rgba(255, 215, 0, 0.45) rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.72), rgba(0, 227, 253, 0.48));
+  border: 2px solid rgba(13, 14, 19, 0.9);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.95), rgba(0, 227, 253, 0.72));
 }
 
 body {

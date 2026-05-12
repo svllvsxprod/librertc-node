@@ -290,9 +290,9 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-xl">
-      <div className="glass-card w-full max-w-lg rounded-2xl shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/75 p-4 backdrop-blur-xl">
+      <div className="glass-card flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col rounded-2xl shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <h2 className="brand-title text-lg font-semibold tracking-tight">{title}</h2>
           <button
             className="secondary-glow inline-flex h-9 w-9 items-center justify-center rounded-full border"
@@ -301,7 +301,7 @@ function Modal({
             <X className="h-4 w-4" />
           </button>
         </div>
-        {children}
+        <div className="min-h-0 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   );
