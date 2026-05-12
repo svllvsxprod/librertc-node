@@ -1,20 +1,20 @@
 [Unit]
-Description=OlcRTC Manager Panel
-Documentation=https://github.com/BigDaddy3334/olcrtc-manager-panel
+Description=LibreRTC Node
+Documentation=https://github.com/svllvsxprod/librertc-node
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 Environment=OLCRTC_PATH=/usr/local/bin/olcrtc
-ExecStart=/usr/local/bin/olcrtc-manager -config /etc/olcrtc-manager/config.json
+ExecStart=/usr/local/bin/librertc-node -config /etc/librertc/config.json
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5s
 KillSignal=SIGTERM
 TimeoutStopSec=10s
 
-# v2 creates network namespaces, veth interfaces, tc qdiscs and iptables rules.
+# LibreRTC Node creates network namespaces, veth interfaces, tc qdiscs and iptables rules.
 # Run as root unless you replace this with an equivalent capability setup.
 
 [Install]
