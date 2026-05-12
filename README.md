@@ -18,6 +18,10 @@ This repository is focused on the server node MVP:
 
 Client applications are intentionally out of scope until the server API and deployment model are stable.
 
+## License
+
+MIT
+
 ## Requirements
 
 Runtime requirements on Linux:

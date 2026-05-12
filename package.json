@@ -2,6 +2,7 @@
   "name": "librertc-node-web",
   "private": true,
   "description": "LibreRTC Node admin panel frontend",
+  "license": "MIT",
   "scripts": {
     "build": "vite build",
     "dev": "vite --host 127.0.0.1"
