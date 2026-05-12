@@ -862,7 +862,7 @@ function App() {
         </div>
       </header>
 
-      <section className="glass-shell sticky top-[73px] z-30 border-b px-5 py-4">
+      <section className="glass-shell stable-surface sticky top-[73px] z-30 border-b px-5 py-4">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <h1 className="brand-title text-2xl font-semibold tracking-tight text-foreground">Панель управления</h1>
           <button className="primary-glow inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold" onClick={openCreate}>
@@ -879,8 +879,8 @@ function App() {
           <StatCard icon={<Activity className="h-4 w-4" />} label="Инстансы" value={state?.running_count ?? "..."} />
         </section>
 
-        <section className="glass-card no-glass-line mt-6 overflow-hidden rounded-[2rem] p-0">
-          <div className="relative border-b border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,0,0.16),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(0,227,253,0.14),transparent_30%)] p-5 md:p-6">
+        <section className="glass-card stable-panel no-glass-line mt-6 overflow-hidden rounded-[2rem] p-0">
+          <div className="stable-panel-head relative border-b border-white/10 p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="brand-title text-3xl font-semibold tracking-tight text-foreground">Клиенты</h2>
