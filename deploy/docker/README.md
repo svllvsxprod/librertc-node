@@ -61,7 +61,7 @@ http://127.0.0.1:18888/admin
 - Do not reuse Docker network or volume names from other projects.
 - This container needs network administration capabilities for namespaces, veth, iptables, and traffic limits.
 - The compose file does not edit host firewall or reverse proxy configuration.
-- If the VPS already runs a reverse proxy, add a dedicated upstream to `127.0.0.1:18888` instead of changing this compose file to bind publicly.
+- If the VPS already runs a reverse proxy, add a dedicated backend target to `127.0.0.1:18888` instead of changing this compose file to bind publicly.
 
 ## Health Check
 
