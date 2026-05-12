@@ -213,9 +213,19 @@ func TestFirstRunSetupCreatesAdminSession(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("setup status = %d, body = %s", rec.Code, rec.Body.String())
 	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("setup cookies = %d, want 1", len(cookies))
+	}
+	if cookies[0].MaxAge < int((29 * 24 * time.Hour).Seconds()) {
+		t.Fatalf("session MaxAge = %d, want persistent cookie", cookies[0].MaxAge)
+	}
+	if !newSessionStore().Valid(cookies[0].Value, "firstpass123") {
+		t.Fatal("session cookie is not valid across a new session store")
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
-	for _, cookie := range rec.Result().Cookies() {
+	for _, cookie := range cookies {
 		req.AddCookie(cookie)
 	}
 	rec = httptest.NewRecorder()

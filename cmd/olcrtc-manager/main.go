@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"encoding/hex"
@@ -40,6 +42,7 @@ var managerStartedAt = time.Now()
 const (
 	appName    = "LibreRTC Node"
 	appVersion = "0.1.0-dev"
+	sessionTTL = 30 * 24 * time.Hour
 )
 
 var authLimiter = newAuthLimiter()
@@ -2546,7 +2549,7 @@ func adminAuth(next http.Handler) http.Handler {
 			writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"setup_required": true})
 			return
 		}
-		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value) {
+		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value, pass) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -2589,7 +2592,7 @@ func authMeHandler(configPath string) http.HandlerFunc {
 			writeJSON(w, map[string]any{"authenticated": false, "setup_required": true})
 			return
 		}
-		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value) {
+		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value, pass) {
 			writeJSON(w, map[string]any{"authenticated": true, "user": user})
 			return
 		}
@@ -2630,7 +2633,7 @@ func loginHandler(configPath string) http.HandlerFunc {
 			return
 		}
 		authLimiter.Reset(remote)
-		token, err := adminSessions.Create()
+		token, err := adminSessions.Create(pass)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -2671,7 +2674,7 @@ func setupHandler(configPath string) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		token, err := adminSessions.Create()
+		token, err := adminSessions.Create(req.Password)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -2686,7 +2689,8 @@ func setSessionCookie(w http.ResponseWriter, token string) {
 		Name:     "olcrtc_session",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   int((12 * time.Hour).Seconds()),
+		MaxAge:   int(sessionTTL.Seconds()),
+		Expires:  time.Now().Add(sessionTTL),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
@@ -2842,50 +2846,47 @@ func (l *authLimiterType) Reset(remote string) {
 }
 
 type sessionStore struct {
-	mu       sync.Mutex
-	sessions map[string]time.Time
 }
 
 func newSessionStore() *sessionStore {
-	return &sessionStore{sessions: make(map[string]time.Time)}
+	return &sessionStore{}
 }
 
-func (s *sessionStore) Create() (string, error) {
-	buf := make([]byte, 32)
+func (s *sessionStore) Create(secret string) (string, error) {
+	buf := make([]byte, 24)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
-	token := hex.EncodeToString(buf)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sessions[token] = time.Now().Add(12 * time.Hour)
-	return token, nil
+	expires := time.Now().Add(sessionTTL).Unix()
+	nonce := hex.EncodeToString(buf)
+	payload := nonce + ":" + strconv.FormatInt(expires, 10)
+	return payload + ":" + signSessionPayload(payload, secret), nil
 }
 
-func (s *sessionStore) Valid(token string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	expires, ok := s.sessions[token]
-	if !ok {
+func (s *sessionStore) Valid(token, secret string) bool {
+	parts := strings.Split(token, ":")
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
 		return false
 	}
-	if time.Now().After(expires) {
-		delete(s.sessions, token)
+	expires, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil || time.Now().After(time.Unix(expires, 0)) {
 		return false
 	}
-	return true
+	payload := parts[0] + ":" + parts[1]
+	want := signSessionPayload(payload, secret)
+	return hmac.Equal([]byte(parts[2]), []byte(want))
 }
 
 func (s *sessionStore) Delete(token string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.sessions, token)
 }
 
 func (s *sessionStore) Clear() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sessions = make(map[string]time.Time)
+}
+
+func signSessionPayload(payload, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(payload))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func remoteHost(r *http.Request) string {
