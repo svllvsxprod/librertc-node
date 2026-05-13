@@ -171,10 +171,26 @@ const payloadFields: Record<string, Array<{ key: string; label: string; defaultV
 };
 
 const supportLinks = [
-  { label: "Tribute", href: "https://t.me/tribute/app?startapp=dK9j" },
-  { label: "NOWPayments", href: "https://nowpayments.io/donation/svllvsx" },
-  { label: "svllvsxprod", href: "https://t.me/svllvsxprod" },
-  { label: "Open Libre Community", href: "https://t.me/openlibrecommunity" },
+  {
+    label: "Support LibreRTC via Tribute",
+    href: "https://t.me/tribute/app?startapp=dK9j",
+    image: new URL("../screens/donate-tribute-v2.svg", import.meta.url).href,
+  },
+  {
+    label: "Donate with NOWPayments",
+    href: "https://nowpayments.io/donation/svllvsx",
+    image: new URL("../screens/donate-nowpayments-v2.svg", import.meta.url).href,
+  },
+  {
+    label: "svllvsxprod Telegram",
+    href: "https://t.me/svllvsxprod",
+    image: new URL("../screens/telegram-updates-v2.svg", import.meta.url).href,
+  },
+  {
+    label: "Open Libre Community Telegram",
+    href: "https://t.me/openlibrecommunity",
+    image: new URL("../screens/telegram-community-v2.svg", import.meta.url).href,
+  },
 ];
 
 async function request(path: string, options?: RequestInit) {
@@ -310,12 +326,12 @@ function SupportFooter() {
         {supportLinks.map((link) => (
           <a
             key={link.href}
-            className="secondary-glow inline-flex h-11 min-w-40 items-center justify-center rounded-full border px-4 text-center text-sm font-semibold text-foreground transition hover:-translate-y-0.5"
+            className="block min-w-[220px] rounded-3xl transition hover:-translate-y-0.5 hover:brightness-110"
             href={link.href}
             target="_blank"
             rel="noreferrer"
           >
-            {link.label}
+            <img className="h-auto w-full" src={link.image} alt={link.label} />
           </a>
         ))}
       </div>
