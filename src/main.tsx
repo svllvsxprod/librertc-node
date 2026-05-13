@@ -1009,8 +1009,8 @@ function App() {
                         key={`${client.client_id}-${loc.room_id}-${loc.transport}`}
                         className="w-full rounded-2xl border border-white/10 bg-black/20 p-4"
                       >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
+                        <div className="flex w-full flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span
                                 className={`inline-flex rounded-full px-2 py-1 text-xs ${
@@ -1021,16 +1021,16 @@ function App() {
                               </span>
                               <span className="text-sm font-medium text-foreground">{loc.name || "Default"}</span>
                             </div>
-                            <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                              <div className="rounded-xl bg-white/[0.035] p-3">
+                            <div className="mt-3 grid w-full gap-2 text-xs text-muted-foreground md:grid-cols-3">
+                              <div className="min-w-0 rounded-xl bg-white/[0.035] p-3 md:col-span-2">
                                 <div className="eyebrow">Room</div>
                                 <div className="mt-1 max-w-full truncate font-mono text-[11px] text-foreground">{loc.room_id}</div>
                               </div>
-                              <div className="rounded-xl bg-white/[0.035] p-3">
+                              <div className="min-w-0 rounded-xl bg-white/[0.035] p-3">
                                 <div className="eyebrow">Route</div>
                                 <div className="mt-1 text-foreground">{loc.carrier} / {loc.transport}</div>
                               </div>
-                              <div className="rounded-xl bg-white/[0.035] p-3">
+                              <div className="min-w-0 rounded-xl bg-white/[0.035] p-3 md:col-span-3">
                                 <div className="eyebrow">DNS</div>
                                 <div className="mt-1 font-mono text-[11px] text-foreground">{loc.dns}</div>
                               </div>
