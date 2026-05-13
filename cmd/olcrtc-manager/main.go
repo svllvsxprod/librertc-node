@@ -1312,9 +1312,6 @@ func generateRoomID(ctx context.Context, olcrtcPath, carrier, dns string) (strin
 	defer cancel()
 	out, err := exec.CommandContext(genCtx, olcrtcPath, "-mode", "gen", "-carrier", carrier, "-dns", dns, "-amount", "1").CombinedOutput()
 	if err != nil {
-		if carrier == "wbstream" && strings.Contains(string(out), "Guests are not allowed to create room") {
-			return fallbackRoomID()
-		}
 		return "", fmt.Errorf("generate room id: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	for _, line := range strings.Split(string(out), "\n") {
@@ -1324,16 +1321,6 @@ func generateRoomID(ctx context.Context, olcrtcPath, carrier, dns string) (strin
 		}
 	}
 	return "", errors.New("olcrtc generated empty room id")
-}
-
-func fallbackRoomID() (string, error) {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("generate fallback room id: %w", err)
-	}
-	buf[6] = (buf[6] & 0x0f) | 0x70
-	buf[8] = (buf[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", buf[0:4], buf[4:6], buf[6:8], buf[8:10], buf[10:16]), nil
 }
 
 func randomHex(size int) (string, error) {
