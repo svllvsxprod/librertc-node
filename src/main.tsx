@@ -124,6 +124,7 @@ type AuditEvent = {
 type ClientForm = {
   client_id: string;
   name: string;
+  room_id: string;
   quota: Quota;
   carrier: string;
   transport: string;
@@ -141,6 +142,7 @@ const transportsByCarrier: Record<string, string[]> = {
 const defaultForm: ClientForm = {
   client_id: "",
   name: "",
+  room_id: "",
   quota: {},
   carrier: "wbstream",
   transport: "datachannel",
@@ -539,6 +541,16 @@ function ClientFormFields({
           placeholder="Default location"
         />
       </label>
+      <label className="grid gap-2 text-sm text-muted-foreground">
+        Room ID
+        <input
+          className="h-10 rounded-md border border-border bg-background px-3 font-mono text-xs text-foreground outline-none focus:border-primary"
+          value={form.room_id}
+          onChange={(event) => set({ room_id: event.target.value })}
+          placeholder="оставь пустым для автогенерации"
+        />
+        <span className="text-xs text-muted-foreground/80">Для WB Stream можно вставить ID комнаты, созданной вручную на сайте.</span>
+      </label>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="grid gap-2 text-sm text-muted-foreground">
           Carrier
@@ -724,6 +736,7 @@ function App() {
       normalizeForm({
         client_id: client.client_id,
         name: loc?.name ?? client.client_id,
+        room_id: loc?.room_id ?? "",
         quota: client.quota ?? {},
         carrier: loc?.carrier ?? "wbstream",
         transport: loc?.transport ?? "datachannel",
@@ -742,6 +755,7 @@ function App() {
         body: JSON.stringify({
           client_id: createForm.client_id.trim(),
           name: createForm.name.trim(),
+          room_id: createForm.room_id.trim(),
           quota: cleanQuota(createForm.quota),
           carrier: createForm.carrier,
           transport: createForm.transport,
@@ -750,7 +764,7 @@ function App() {
         }),
       });
       setCreateOpen(false);
-    }, "Клиент создан, room сгенерирован отдельно");
+    }, createForm.room_id.trim() ? "Клиент создан с указанным room" : "Клиент создан, room сгенерирован отдельно");
 
   const updateClient = () =>
     runAction(async () => {
@@ -760,6 +774,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editForm.name.trim(),
+          room_id: editForm.room_id.trim(),
           quota: cleanQuota(editForm.quota),
           carrier: editForm.carrier,
           transport: editForm.transport,

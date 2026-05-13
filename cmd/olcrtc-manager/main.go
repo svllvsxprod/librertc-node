@@ -902,6 +902,7 @@ type apiV1ClientDetail struct {
 type addClientRequest struct {
 	ClientID   string            `json:"client_id"`
 	FromClient string            `json:"from_client"`
+	RoomID     string            `json:"room_id"`
 	Quota      Quota             `json:"quota"`
 	Carrier    string            `json:"carrier"`
 	Transport  string            `json:"transport"`
@@ -912,6 +913,7 @@ type addClientRequest struct {
 
 type updateClientRequest struct {
 	Quota     Quota             `json:"quota"`
+	RoomID    string            `json:"room_id"`
 	Carrier   string            `json:"carrier"`
 	Transport string            `json:"transport"`
 	Payload   map[string]string `json:"payload"`
@@ -938,6 +940,7 @@ func addClientFromRequest(ctx context.Context, configPath, olcrtcPath string, r 
 	req.FromClient = strings.TrimSpace(req.FromClient)
 	req.Carrier = strings.TrimSpace(req.Carrier)
 	req.Transport = strings.TrimSpace(req.Transport)
+	req.RoomID = strings.TrimSpace(req.RoomID)
 	req.Payload = cleanPayload(req.Payload)
 	req.Quota = normalizeQuota(req.Quota)
 	req.DNS = strings.TrimSpace(req.DNS)
@@ -975,9 +978,11 @@ func addClientFromRequest(ctx context.Context, configPath, olcrtcPath string, r 
 		if err != nil {
 			return "", err
 		}
-		loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, loc.Carrier, loc.DNS)
-		if err != nil {
-			return "", err
+		if loc.Endpoint.RoomID == "" {
+			loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, loc.Carrier, loc.DNS)
+			if err != nil {
+				return "", err
+			}
 		}
 		locations = append(locations, loc)
 	}
@@ -1000,6 +1005,7 @@ func updateClientFromRequest(ctx context.Context, configPath, olcrtcPath, client
 	}
 	req.Carrier = strings.TrimSpace(req.Carrier)
 	req.Transport = strings.TrimSpace(req.Transport)
+	req.RoomID = strings.TrimSpace(req.RoomID)
 	req.Payload = cleanPayload(req.Payload)
 	req.Quota = normalizeQuota(req.Quota)
 	req.DNS = strings.TrimSpace(req.DNS)
@@ -1039,7 +1045,9 @@ func updateClientFromRequest(ctx context.Context, configPath, olcrtcPath, client
 		}
 		cfg.Clients[i].Quota = req.Quota
 		loc := cfg.Clients[i].Locations[0]
-		if loc.Carrier != req.Carrier || loc.DNS != req.DNS {
+		if req.RoomID != "" {
+			loc.Endpoint.RoomID = req.RoomID
+		} else if loc.Carrier != req.Carrier || loc.DNS != req.DNS {
 			loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, req.Carrier, req.DNS)
 			if err != nil {
 				return err
@@ -1085,6 +1093,7 @@ func createLocationsFromRequest(cfg Config, req addClientRequest) ([]Location, e
 		return []Location{{
 			Name:      name,
 			ClientID:  req.ClientID,
+			Endpoint:  Endpoint{RoomID: req.RoomID},
 			Carrier:   carrier,
 			Transport: transportConfig,
 			Link:      "direct",
@@ -1134,6 +1143,7 @@ func addLocationFromRequest(ctx context.Context, configPath, olcrtcPath, clientI
 	req.ClientID = clientID
 	req.Carrier = strings.TrimSpace(req.Carrier)
 	req.Transport = strings.TrimSpace(req.Transport)
+	req.RoomID = strings.TrimSpace(req.RoomID)
 	req.Payload = cleanPayload(req.Payload)
 	req.DNS = strings.TrimSpace(req.DNS)
 	req.Name = strings.TrimSpace(req.Name)
@@ -1146,9 +1156,11 @@ func addLocationFromRequest(ctx context.Context, configPath, olcrtcPath, clientI
 	if err != nil {
 		return err
 	}
-	loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, loc.Carrier, loc.DNS)
-	if err != nil {
-		return err
+	if loc.Endpoint.RoomID == "" {
+		loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, loc.Carrier, loc.DNS)
+		if err != nil {
+			return err
+		}
 	}
 	cfg, err := loadConfig(configPath)
 	if err != nil {

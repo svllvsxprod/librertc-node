@@ -575,6 +575,39 @@ func TestAPIV1ClientCreateValidationUsesStableError(t *testing.T) {
 	}
 }
 
+func TestAPIV1ClientCreateUsesManualRoomID(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfigWithoutBackup(configPath, testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+	reloads := 0
+	body := bytes.NewBufferString(`{"client_id":"manual","room_id":"manual-room","carrier":"wbstream","transport":"datachannel","dns":"1.1.1.1:53","name":"Manual"}`)
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, filepath.Join(t.TempDir(), "missing-olcrtc"), func() error {
+		reloads++
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/clients", body))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if reloads != 1 {
+		t.Fatalf("reloads = %d, want 1", reloads)
+	}
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, ok := testClientByID(cfg, "manual")
+	if !ok {
+		t.Fatalf("created client not found: %#v", cfg.Clients)
+	}
+	if got := client.Locations[0].Endpoint.RoomID; got != "manual-room" {
+		t.Fatalf("room_id = %q, want manual-room", got)
+	}
+}
+
 func TestAPIV1ReloadUsesStableEnvelope(t *testing.T) {
 	reloads := 0
 	rec := httptest.NewRecorder()
