@@ -1021,7 +1021,7 @@ function App() {
                               </span>
                               <span className="text-sm font-medium text-foreground">{loc.name || "Default"}</span>
                             </div>
-                            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                            <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
                               <div className="rounded-xl bg-white/[0.035] p-3">
                                 <div className="eyebrow">Room</div>
                                 <div className="mt-1 max-w-full truncate font-mono text-[11px] text-foreground">{loc.room_id}</div>
@@ -1030,7 +1030,7 @@ function App() {
                                 <div className="eyebrow">Route</div>
                                 <div className="mt-1 text-foreground">{loc.carrier} / {loc.transport}</div>
                               </div>
-                              <div className="rounded-xl bg-white/[0.035] p-3 sm:col-span-2">
+                              <div className="rounded-xl bg-white/[0.035] p-3">
                                 <div className="eyebrow">DNS</div>
                                 <div className="mt-1 font-mono text-[11px] text-foreground">{loc.dns}</div>
                               </div>
