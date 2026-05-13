@@ -378,6 +378,7 @@ deploy_server() {
   ensure_base_packages
   ensure_docker
   write_deploy_env "$mode" "$port" "./local"
+  load_env
   cfg_dir="$(config_dir_abs)"
   write_deploy_config "$cfg_dir"
   write_temporary_panel_credentials "$cfg_dir"
