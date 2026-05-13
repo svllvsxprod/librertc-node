@@ -15,7 +15,7 @@ usage() {
   cat <<EOF
 LibreRTC Node Docker installer
 
-Usage: $0 <command> [options]
+Usage: $0 [command] [options]
 
 Commands:
   deploy    One-command server deployment from GitHub
@@ -37,7 +37,7 @@ Deploy options:
   --ref REF                Git ref to deploy (default: $DEFAULT_REF)
   --install-dir DIR        Install directory (default: $DEFAULT_INSTALL_DIR)
 
-No command defaults to: init
+No command starts an interactive deployment wizard.
 EOF
 }
 
@@ -91,9 +91,13 @@ ensure_docker() {
 
 bootstrap_repo_if_needed() {
   first_arg="${1:-}"
-  [ "$first_arg" = "deploy" ] || return 0
+  [ -z "$first_arg" ] || [ "$first_arg" = "deploy" ] || return 0
   [ -f "$COMPOSE_FILE" ] && return 0
-  original_args="$*"
+  if [ "$#" -eq 0 ]; then
+    original_args="deploy"
+  else
+    original_args="$*"
+  fi
 
   need_root
   ensure_base_packages
@@ -338,9 +342,35 @@ server_ip() {
 prompt_value() {
   name="$1"
   default="$2"
-  printf '%s [%s]: ' "$name" "$default" >&2
-  read value
+  [ -r /dev/tty ] || die "interactive setup requires a TTY; use 'deploy --mode ...' for non-interactive install"
+  printf '%s [%s]: ' "$name" "$default" >/dev/tty
+  read value </dev/tty
   printf '%s\n' "${value:-$default}"
+}
+
+prompt_deploy_wizard() {
+  cat >/dev/tty <<EOF
+
+LibreRTC Node setup
+
+Choose how the admin panel should be published:
+  1) Domain with Caddy and HTTPS
+  2) Raw public port
+EOF
+  choice="$(prompt_value 'Mode' '1')"
+  case "$choice" in
+    1|domain|Domain) mode="domain" ;;
+    2|port|Port) mode="port" ;;
+    *) die "mode must be 1/domain or 2/port" ;;
+  esac
+
+  if [ "$mode" = "domain" ]; then
+    domain="$(prompt_value 'Domain' '')"
+    [ -n "$domain" ] || die "domain is required"
+    port="$(prompt_value 'Internal panel port' "$port")"
+  else
+    port="$(prompt_value 'Public panel port' "$port")"
+  fi
 }
 
 deploy_server() {
@@ -367,7 +397,7 @@ deploy_server() {
   done
 
   if [ -z "$mode" ]; then
-    mode="$(prompt_value 'Publish mode: port or domain' 'port')"
+    prompt_deploy_wizard
   fi
   case "$mode" in port|domain) ;; *) die "mode must be port or domain" ;; esac
   if [ "$mode" = "domain" ] && [ -z "$domain" ]; then
@@ -449,7 +479,7 @@ health_url() {
   printf 'http://%s:%s/api/v1/health\n' "$LIBRERTC_NODE_HOST_BIND" "$LIBRERTC_NODE_HOST_PORT"
 }
 
-cmd=${1:-init}
+cmd=${1:-deploy}
 case "$cmd" in
   deploy)
     deploy_server "$@"
