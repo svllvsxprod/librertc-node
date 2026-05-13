@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -240,6 +241,69 @@ func TestFirstRunSetupCreatesAdminSession(t *testing.T) {
 	})).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/state", nil))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("protected status without session = %d, want 401", rec.Code)
+	}
+}
+
+func TestTemporaryCredentialsRequireSetupAfterLogin(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	envPath := filepath.Join(dir, "panel.env")
+	t.Setenv("OLCRTC_MANAGER_ENV_FILE", envPath)
+	t.Setenv("OLCRTC_MANAGER_USER", "")
+	t.Setenv("OLCRTC_MANAGER_PASS", "")
+	adminSessions.Clear()
+
+	if err := os.WriteFile(envPath, []byte("OLCRTC_MANAGER_USER='temp-admin'\nOLCRTC_MANAGER_PASS='temp-pass-123'\nOLCRTC_MANAGER_SETUP_REQUIRED='1'\nKEEP_ME='yes'\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	loginHandler(configPath).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBufferString(`{"user":"temp-admin","password":"temp-pass-123"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"setup_required": true`) {
+		t.Fatalf("login did not require setup: %s", rec.Body.String())
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("login cookies = %d, want 1", len(cookies))
+	}
+
+	rec = httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/state", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	adminAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("protected status before setup = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/setup", bytes.NewBufferString(`{"user":"owner","password":"new-pass-123"}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec = httptest.NewRecorder()
+	setupHandler(configPath).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("setup status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	values, err := readEnvFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if values["OLCRTC_MANAGER_USER"] != "owner" || values["OLCRTC_MANAGER_PASS"] != "new-pass-123" {
+		t.Fatalf("credentials not replaced: %#v", values)
+	}
+	if values["OLCRTC_MANAGER_SETUP_REQUIRED"] != "0" {
+		t.Fatalf("setup flag = %q, want 0", values["OLCRTC_MANAGER_SETUP_REQUIRED"])
+	}
+	if values["KEEP_ME"] != "yes" {
+		t.Fatalf("unrelated env key was not preserved: %#v", values)
 	}
 }
 

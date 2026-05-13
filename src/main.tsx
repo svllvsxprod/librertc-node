@@ -334,6 +334,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
     setBusy(true);
     setError("");
     try {
+      if (setupRequired && !user.trim()) throw new Error("Укажите новый логин");
       if (setupRequired && password !== repeat) throw new Error("Пароли не совпадают");
       await request(setupRequired ? "/api/auth/setup" : "/api/auth/login", {
         method: "POST",
@@ -356,8 +357,10 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
           <Lock className="h-5 w-5 text-secondary" />
         </div>
         <div>
-          <h1 className="brand-title text-3xl font-semibold tracking-tight text-primary">{setupRequired ? "Первичная настройка" : "Вход в панель"}</h1>
-          <div className="mt-1 text-sm text-muted-foreground">Управление клиентами, туннелями и подписками LibreRTC Node.</div>
+          <h1 className="brand-title text-3xl font-semibold tracking-tight text-primary">{setupRequired ? "Смена временного доступа" : "Вход в панель"}</h1>
+          <div className="mt-1 text-sm text-muted-foreground">
+            {setupRequired ? "Задайте новый логин и пароль перед первым входом." : "Управление клиентами, туннелями и подписками LibreRTC Node."}
+          </div>
         </div>
         <label className="grid gap-2 text-sm text-muted-foreground">
           Логин
@@ -375,7 +378,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
+            autoComplete={setupRequired ? "new-password" : "current-password"}
           />
         </label>
         {setupRequired && (
@@ -396,7 +399,7 @@ function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin
           disabled={busy}
         >
           <Lock className="h-4 w-4" />
-          {setupRequired ? "Сохранить пароль" : "Войти"}
+          {setupRequired ? "Сохранить логин и пароль" : "Войти"}
         </button>
       </form>
     </div>

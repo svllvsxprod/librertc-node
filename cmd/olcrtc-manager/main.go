@@ -2627,6 +2627,10 @@ func adminAuth(next http.Handler) http.Handler {
 			return
 		}
 		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value, pass) {
+			if adminSetupRequired(configPathFromRequest(r)) {
+				writeJSONStatus(w, http.StatusForbidden, map[string]any{"setup_required": true})
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -2644,6 +2648,10 @@ func adminAuth(next http.Handler) http.Handler {
 			return
 		}
 		authLimiter.Reset(remote)
+		if adminSetupRequired(configPathFromRequest(r)) {
+			writeJSONStatus(w, http.StatusForbidden, map[string]any{"setup_required": true})
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -2665,12 +2673,13 @@ func authMeHandler(configPath string) http.HandlerFunc {
 			return
 		}
 		user, pass := adminCredentials(configPath)
+		setupRequired := adminSetupRequired(configPath)
 		if user == "" || pass == "" {
 			writeJSON(w, map[string]any{"authenticated": false, "setup_required": true})
 			return
 		}
 		if cookie, err := r.Cookie("olcrtc_session"); err == nil && adminSessions.Valid(cookie.Value, pass) {
-			writeJSON(w, map[string]any{"authenticated": true, "user": user})
+			writeJSON(w, map[string]any{"authenticated": true, "user": user, "setup_required": setupRequired})
 			return
 		}
 		writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"authenticated": false})
@@ -2693,6 +2702,7 @@ func loginHandler(configPath string) http.HandlerFunc {
 			return
 		}
 		user, pass := adminCredentials(configPath)
+		setupRequired := adminSetupRequired(configPath)
 		if user == "" || pass == "" {
 			writeJSONStatus(w, http.StatusConflict, map[string]any{"setup_required": true})
 			return
@@ -2716,7 +2726,7 @@ func loginHandler(configPath string) http.HandlerFunc {
 			return
 		}
 		setSessionCookie(w, token)
-		writeJSON(w, map[string]any{"authenticated": true, "user": user})
+		writeJSON(w, map[string]any{"authenticated": true, "user": user, "setup_required": setupRequired})
 	}
 }
 
@@ -2727,9 +2737,17 @@ func setupHandler(configPath string) http.HandlerFunc {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if user, pass := adminCredentials(configPath); user != "" && pass != "" {
-			writeJSONStatus(w, http.StatusConflict, map[string]any{"setup_required": false})
-			return
+		currentUser, currentPass := adminCredentials(configPath)
+		setupRequired := adminSetupRequired(configPath)
+		if currentUser != "" && currentPass != "" {
+			if !setupRequired {
+				writeJSONStatus(w, http.StatusConflict, map[string]any{"setup_required": false})
+				return
+			}
+			if cookie, err := r.Cookie("olcrtc_session"); err != nil || !adminSessions.Valid(cookie.Value, currentPass) {
+				http.Error(w, "temporary credentials must be confirmed first", http.StatusUnauthorized)
+				return
+			}
 		}
 		var req struct {
 			User     string `json:"user"`
@@ -2741,13 +2759,14 @@ func setupHandler(configPath string) http.HandlerFunc {
 		}
 		req.User = strings.TrimSpace(req.User)
 		if req.User == "" {
-			req.User = "admin"
+			http.Error(w, "login is required", http.StatusBadRequest)
+			return
 		}
 		if len(req.Password) < 8 {
 			http.Error(w, "password must contain at least 8 characters", http.StatusBadRequest)
 			return
 		}
-		if err := updatePanelEnvPassword(configPath, req.User, req.Password); err != nil {
+		if err := updatePanelEnvCredentials(configPath, req.User, req.Password, false); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -2810,7 +2829,7 @@ func changePasswordHandler(configPath string) http.HandlerFunc {
 			http.Error(w, "new password must contain at least 8 characters", http.StatusBadRequest)
 			return
 		}
-		if err := updatePanelEnvPassword(configPath, user, req.NewPassword); err != nil {
+		if err := updatePanelEnvCredentials(configPath, user, req.NewPassword, false); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -2828,6 +2847,19 @@ func adminCredentials(configPath string) (string, string) {
 		pass = defaultString(values["OLCRTC_MANAGER_PASS"], pass)
 	}
 	return user, pass
+}
+
+func adminSetupRequired(configPath string) bool {
+	value := os.Getenv("OLCRTC_MANAGER_SETUP_REQUIRED")
+	if values, err := readEnvFile(panelEnvPath(configPath)); err == nil {
+		value = defaultString(values["OLCRTC_MANAGER_SETUP_REQUIRED"], value)
+	}
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func currentAdminUser(configPath string) string {
@@ -2863,6 +2895,10 @@ func readEnvFile(path string) (map[string]string, error) {
 }
 
 func updatePanelEnvPassword(configPath, user, pass string) error {
+	return updatePanelEnvCredentials(configPath, user, pass, false)
+}
+
+func updatePanelEnvCredentials(configPath, user, pass string, setupRequired bool) error {
 	path := panelEnvPath(configPath)
 	values, _ := readEnvFile(path)
 	if values == nil {
@@ -2870,8 +2906,24 @@ func updatePanelEnvPassword(configPath, user, pass string) error {
 	}
 	values["OLCRTC_MANAGER_USER"] = defaultString(user, "admin")
 	values["OLCRTC_MANAGER_PASS"] = pass
-	data := fmt.Sprintf("OLCRTC_MANAGER_USER=%s\nOLCRTC_MANAGER_PASS=%s\n", shellQuote(values["OLCRTC_MANAGER_USER"]), shellQuote(values["OLCRTC_MANAGER_PASS"]))
-	return os.WriteFile(path, []byte(data), 0o600)
+	if setupRequired {
+		values["OLCRTC_MANAGER_SETUP_REQUIRED"] = "1"
+	} else {
+		values["OLCRTC_MANAGER_SETUP_REQUIRED"] = "0"
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var data strings.Builder
+	for _, key := range keys {
+		data.WriteString(key)
+		data.WriteByte('=')
+		data.WriteString(shellQuote(values[key]))
+		data.WriteByte('\n')
+	}
+	return os.WriteFile(path, []byte(data.String()), 0o600)
 }
 
 func shellQuote(value string) string {
