@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -188,6 +190,27 @@ func TestSubscriptionHandlerRejectsRootAndUnknownClient(t *testing.T) {
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("%s status = %d, want %d", path, rec.Code, http.StatusNotFound)
 		}
+	}
+}
+
+func TestGenerateRoomIDFallsBackWhenWBStreamGuestCreationIsDisabled(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "olcrtc")
+	content := "#!/bin/sh\necho 'wbstream.CreateRoom: create room: create room failed: 400 {\"code\":3,\"message\":\"Guests are not allowed to create room\",\"details\":[]}' >&2\nexit 1\n"
+	if runtime.GOOS == "windows" {
+		script += ".bat"
+		content = "@echo off\necho wbstream.CreateRoom: create room: create room failed: 400 {\"code\":3,\"message\":\"Guests are not allowed to create room\",\"details\":[]} 1>&2\nexit /b 1\n"
+	}
+	if err := os.WriteFile(script, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	roomID, err := generateRoomID(context.Background(), script, "wbstream", "1.1.1.1:53")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Sscanf(roomID, "%08x-%04x-%04x-%04x-%012x", new(uint32), new(uint16), new(uint16), new(uint16), new(uint64)); err != nil {
+		t.Fatalf("fallback room id %q is not uuid-like: %v", roomID, err)
 	}
 }
 
