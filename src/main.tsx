@@ -323,11 +323,19 @@ function Modal({
 }
 
 function LoginView({ setupRequired, onLogin }: { setupRequired: boolean; onLogin: () => void }) {
-  const [user, setUser] = useState("admin");
+  const [user, setUser] = useState(setupRequired ? "" : "admin");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!setupRequired) return;
+    setUser("");
+    setPassword("");
+    setRepeat("");
+    setError("");
+  }, [setupRequired]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -995,11 +1003,11 @@ function App() {
                     </div>
                   )}
 
-                  <div className="relative mt-5 grid gap-3 lg:grid-cols-2">
+                  <div className="relative mt-5 grid gap-3">
                     {client.locations.map((loc) => (
                       <div
                         key={`${client.client_id}-${loc.room_id}-${loc.transport}`}
-                        className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 p-4"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
