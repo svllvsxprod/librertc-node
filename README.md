@@ -1,97 +1,220 @@
-# LibreRTC Node
+<h1 align="center">LibreRTC Node</h1>
 
-LibreRTC Node is the server-side process manager and admin API for LibreRTC deployments.
+<p align="center">
+  Серверный node для LibreRTC: веб-панель, подписки для клиентов, генерация room/key, запуск и supervision <code>olcrtc</code> runtime-инстансов, квоты и диагностика. Поддерживает быстрый deploy на чистый VPS через интерактивный setup wizard с Docker и Caddy.
+</p>
 
-It runs multiple RTC tunnel server instances, exposes a local admin panel, and provides versioned API endpoints for automation and future clients.
+<p align="center">
+  <img alt="Linux" src="https://img.shields.io/badge/Linux-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white">
+  <img alt="Backend" src="https://img.shields.io/badge/Backend-Go-00ADD8?style=for-the-badge&logo=go&logoColor=white">
+  <img alt="Frontend" src="https://img.shields.io/badge/UI-React%20%2B%20Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white">
+  <img alt="Reverse proxy" src="https://img.shields.io/badge/HTTPS-Caddy-1F88C0?style=for-the-badge">
+</p>
 
-## Current Scope
+<p align="center">
+  <a href="#скриншот">Скриншот</a> ·
+  <a href="#что-это">Что это</a> ·
+  <a href="#быстрый-деплой">Быстрый деплой</a> ·
+  <a href="#возможности">Возможности</a> ·
+  <a href="#api">API</a> ·
+  <a href="#безопасность">Безопасность</a>
+</p>
 
-This repository is focused on the server node MVP:
+## Скриншот
 
-- local admin panel at `/admin`;
-- first-run admin password setup;
-- versioned API under `/api/v1`;
-- per-client subscriptions and QR payloads;
-- process supervision for tunnel locations;
-- quota metadata and runtime diagnostics;
-- Docker deployment that is safe for VPS hosts with existing projects.
+<p align="center">
+  <img src="screens/1.png" width="900" alt="LibreRTC Node admin panel" />
+</p>
 
-Client applications are intentionally out of scope until the server API and deployment model are stable.
+## Что это
 
-## License
+LibreRTC Node управляет серверной частью LibreRTC deployment. Он хранит конфигурацию клиентов, создаёт subscription URL, показывает QR/URI payload, запускает отдельные `olcrtc` процессы для каждой location и следит за их состоянием.
 
-MIT
+Node нужен там, где хочется развернуть LibreRTC на VPS без ручной сборки runtime, настройки Docker Compose, reverse proxy и временных admin credentials. На первом запуске installer генерирует временный login/password и заставляет сменить их при первом входе.
 
-## Requirements
+Основной сценарий:
 
-Runtime requirements on Linux:
+1. Администратор запускает installer на чистом сервере.
+2. Wizard спрашивает режим публикации: домен через Caddy или raw port.
+3. Installer ставит зависимости, собирает `olcrtc`, создаёт config и временные credentials.
+4. Панель открывается по `/admin`.
+5. Администратор создаёт клиентов и выдаёт им subscription URL или `olcrtc://` URI.
+
+## Быстрый деплой
+
+На чистом Ubuntu/Debian сервере:
 
 ```sh
-ip
-iptables
-tc
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh
 ```
 
-The node creates network namespaces, veth interfaces, routes, iptables rules, and optional traffic limits. Docker deployment therefore requires additional network capabilities; see `deploy/docker/README.md`.
+Installer запустит интерактивный wizard:
 
-## Build
+```text
+LibreRTC Node setup
 
-Build frontend assets first, then build the Go binary so the panel is embedded into the node binary:
+Choose how the admin panel should be published:
+  1) Domain with Caddy and HTTPS
+  2) Raw public port
+Mode [1]:
+Domain []:
+Internal panel port [18888]:
+```
+
+Для domain mode укажи домен, например:
+
+```text
+Domain []: rtc.example.com
+```
+
+После успешного запуска installer выведет:
+
+```text
+LibreRTC Node deployed.
+URL: https://rtc.example.com/admin
+Temporary login: ...
+Temporary password: ...
+```
+
+Первый вход потребует сменить и login, и password.
+
+Для автоматизации можно передать параметры напрямую:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh -s -- deploy --mode domain --domain rtc.example.com
+```
+
+Raw port mode:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh -s -- deploy --mode port --port 18888
+```
+
+## Возможности
+
+- Веб-панель администратора на `/admin`.
+- Temporary login/password на первом deploy.
+- Forced first-login setup со сменой login и password.
+- Автоматическая сборка `olcrtc` из `librertc-core`.
+- Автоматический Docker Compose deploy.
+- Domain mode через Caddy с HTTPS.
+- Raw port mode для тестов и закрытых окружений.
+- Управление клиентами, квотами и locations.
+- Генерация room id через актуальный `olcrtc` runtime.
+- Subscription URL и `olcrtc://` URI для клиентов.
+- Runtime supervision и restart actions.
+- Health, diagnostics, metrics и audit events.
+
+## Как это работает
+
+```text
+Admin browser
+  -> Caddy HTTPS reverse proxy
+  -> LibreRTC Node manager
+  -> config.json + panel.env
+  -> supervised olcrtc server processes
+  -> WebRTC carrier rooms
+  -> LibreRTC Client subscriptions
+```
+
+В domain mode контейнер слушает только `127.0.0.1:18888`, а Caddy публикует HTTPS-домен. В port mode контейнер слушает публичный host port напрямую.
+
+## Проверка
+
+После deploy:
+
+```sh
+docker ps
+```
+
+```sh
+curl -fsS http://127.0.0.1:18888/api/v1/health
+```
+
+Для domain mode:
+
+```sh
+systemctl status caddy --no-pager
+caddy validate --config /etc/caddy/Caddyfile
+curl -fsS https://rtc.example.com/api/v1/health
+```
+
+Логи:
+
+```sh
+docker logs --tail 100 librertc-node
+journalctl -u caddy -n 100 --no-pager
+```
+
+## Локальная сборка
+
+Frontend assets:
 
 ```sh
 pnpm install
 pnpm build
+```
+
+Manager binary:
+
+```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o librertc-node ./cmd/olcrtc-manager
 ```
 
-Run tests:
+Tests:
 
 ```sh
 go test ./...
 ```
 
-## Docker Deployment
+## Docker
 
-Docker deployment files live in `deploy/docker`.
+Docker deployment files are in `deploy/docker`.
 
-Defaults are intentionally conservative:
-
-- binds to `127.0.0.1` only;
-- uses host port `18888`;
-- uses `librertc-node-*` Docker resources;
-- does not use `network_mode: host`;
-- does not edit firewall or reverse proxy configuration.
-
-Initialize local deployment files:
+Useful commands from repo checkout:
 
 ```sh
-sh deploy/docker/install.sh init
+sh deploy/docker/install.sh check
+sh deploy/docker/install.sh start
+sh deploy/docker/install.sh status
+sh deploy/docker/install.sh logs
+sh deploy/docker/install.sh health
+sh deploy/docker/install.sh stop
 ```
 
-Read the full deployment guide before starting on a VPS:
+Default paths on server:
 
 ```text
-deploy/docker/README.md
+/opt/librertc-node
+/opt/librertc-core
+/opt/librertc-node/deploy/docker/local/config.json
+/opt/librertc-node/deploy/docker/local/panel.env
+/etc/caddy/conf.d/librertc-node.caddy
 ```
 
 ## API
 
-Current versioned endpoints:
+Public health endpoint:
 
-- `GET /api/v1/health`
-- `GET /api/v1/server/info`
-- `GET /api/v1/diagnostics`
-- `POST /api/v1/reload`
-- `GET /api/v1/clients`
-- `POST /api/v1/clients`
-- `GET /api/v1/clients/{client_id}`
-- `PATCH /api/v1/clients/{client_id}`
-- `PUT /api/v1/clients/{client_id}`
-- `DELETE /api/v1/clients/{client_id}`
-- `GET /api/v1/clients/{client_id}/subscription`
-- `GET /api/v1/clients/{client_id}/qr`
+```text
+GET /api/v1/health
+```
 
-`/api/v1/diagnostics`, client endpoints, and reload require admin authentication.
+Admin API includes:
+
+```text
+GET    /api/v1/server/info
+GET    /api/v1/diagnostics
+POST   /api/v1/reload
+GET    /api/v1/clients
+POST   /api/v1/clients
+GET    /api/v1/clients/{client_id}
+PATCH  /api/v1/clients/{client_id}
+PUT    /api/v1/clients/{client_id}
+DELETE /api/v1/clients/{client_id}
+GET    /api/v1/clients/{client_id}/subscription
+GET    /api/v1/clients/{client_id}/qr
+```
 
 Responses use a stable envelope:
 
@@ -102,7 +225,7 @@ Responses use a stable envelope:
 }
 ```
 
-Errors use:
+Errors:
 
 ```json
 {
@@ -115,73 +238,9 @@ Errors use:
 }
 ```
 
-### Examples
+## Конфигурация
 
-List clients:
-
-```sh
-curl -u admin:password http://127.0.0.1:18888/api/v1/clients
-```
-
-Get one client:
-
-```sh
-curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default
-```
-
-Create a client:
-
-```sh
-curl -u admin:password \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "client_id": "alice",
-    "from_client": "default",
-    "quota": {"speed_mbps": 25, "traffic_gb": 100}
-  }' \
-  http://127.0.0.1:18888/api/v1/clients
-```
-
-Update a client location and quota:
-
-```sh
-curl -u admin:password \
-  -X PATCH \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "quota": {"speed_mbps": 50, "traffic_gb": 200},
-    "carrier": "wbstream",
-    "transport": "datachannel",
-    "dns": "1.1.1.1:53",
-    "name": "Alice"
-  }' \
-  http://127.0.0.1:18888/api/v1/clients/alice
-```
-
-Delete a client:
-
-```sh
-curl -u admin:password -X DELETE http://127.0.0.1:18888/api/v1/clients/alice
-```
-
-Reload config explicitly:
-
-```sh
-curl -u admin:password -X POST http://127.0.0.1:18888/api/v1/reload
-```
-
-Get subscription or QR payload:
-
-```sh
-curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default/subscription
-curl -u admin:password http://127.0.0.1:18888/api/v1/clients/default/qr
-```
-
-## Configuration
-
-The node reads a JSON config passed through `-config`.
-
-Minimal shape:
+Minimal `config.json` shape:
 
 ```json
 {
@@ -216,4 +275,36 @@ Minimal shape:
 }
 ```
 
-`endpoint.room_id` must be concrete. Placeholder values are rejected by deployment preflight checks.
+Installer генерирует concrete `room_id` и `key` автоматически. Placeholder values rejected by deployment preflight checks.
+
+## Безопасность
+
+- Live `olcrtc://` URI, room IDs, keys и temporary passwords не должны коммититься.
+- `panel.env` создаётся на сервере и не хранится в репозитории.
+- First deploy credentials временные и требуют смены при первом входе.
+- В domain mode manager bind остаётся на `127.0.0.1`, внешний доступ идёт через Caddy.
+- Raw port mode предназначен для тестов, закрытых окружений или ручной firewall настройки.
+- Runtime key values в логах manager редактируются как `<redacted>`.
+
+## Структура
+
+```text
+cmd/olcrtc-manager/       Go manager, admin API and embedded web UI
+src/                      React/Vite admin panel source
+cmd/olcrtc-manager/web/   Built frontend assets embedded by Go
+deploy/docker/            Docker Compose, installer and core build scripts
+docs/                     Plans and operational notes
+screens/                  README screenshots
+```
+
+## Теги
+
+`librertc` `vpn-server` `webrtc` `go` `react` `vite` `docker` `caddy` `reverse-proxy` `admin-panel` `self-hosted` `olcrtc`
+
+## Лицензия
+
+MIT
+
+## Примечание
+
+Этот репозиторий содержит server node и admin panel. Windows client и core runtime ведутся отдельно в рамках LibreRTC.
