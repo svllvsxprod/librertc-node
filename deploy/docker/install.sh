@@ -209,12 +209,12 @@ random_password() {
   random_hex 18
 }
 
-random_room_id() {
-  if [ -r /proc/sys/kernel/random/uuid ]; then
-    cat /proc/sys/kernel/random/uuid
-  else
-    printf 'room-%s\n' "$(random_hex 8)"
-  fi
+generate_room_id() {
+  olcrtc_bin="$(binary_abs)"
+  [ -x "$olcrtc_bin" ] || die "olcrtc binary is missing or not executable: $olcrtc_bin"
+  room_id="$($olcrtc_bin -mode gen -carrier wbstream -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
+  [ -n "$room_id" ] || die "olcrtc generated an empty room id"
+  printf '%s\n' "$room_id"
 }
 
 write_deploy_env() {
@@ -253,7 +253,7 @@ write_deploy_config() {
     info "kept existing $cfg_dir/config.json"
     return
   fi
-  room_id="$(random_room_id)"
+  room_id="$(generate_room_id)"
   key="$(random_hex 32)"
   cat >"$cfg_dir/config.json" <<EOF
 {
@@ -380,9 +380,9 @@ deploy_server() {
   write_deploy_env "$mode" "$port" "./local"
   load_env
   cfg_dir="$(config_dir_abs)"
+  sh "$SCRIPT_DIR/build-core.sh"
   write_deploy_config "$cfg_dir"
   write_temporary_panel_credentials "$cfg_dir"
-  sh "$SCRIPT_DIR/build-core.sh"
   compose down --remove-orphans >/dev/null 2>&1 || true
   check_prerequisites
   compose up -d --build
