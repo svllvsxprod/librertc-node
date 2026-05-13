@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="92" viewBox="0 0 340 92" role="img" aria-label="Donate with NOWPayments">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect x="2" y="2" width="336" height="88" rx="24" fill="#0f172a" filter="url(#s)"/>
+  <rect x="3" y="3" width="334" height="86" rx="23" fill="url(#g)" opacity="0.96"/>
+  <rect x="23" y="21" width="50" height="50" rx="17" fill="rgba(255,255,255,0.2)"/>
+  <path d="M35 59V33h8.2l9.6 14.8V33H61v26h-8.1l-9.7-14.9V59H35Z" fill="#fff"/>
+  <path d="M35 33h8.2l9.6 14.8V33H61" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round"/>
+  <text x="94" y="39" fill="#ecfdf5" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Поддержать LibreRTC</text>
+  <text x="94" y="62" fill="#dcfce7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="800">NOWPayments</text>
+</svg>
