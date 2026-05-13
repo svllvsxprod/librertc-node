@@ -289,9 +289,16 @@ EOF
 write_temporary_panel_credentials() {
   cfg_dir="$1"
   if [ -f "$cfg_dir/panel.env" ]; then
-    DEPLOY_PANEL_CREDENTIALS_CREATED=0
-    DEPLOY_ADMIN_USER=""
-    DEPLOY_ADMIN_PASS=""
+    setup_required="$(sed -n "s/^OLCRTC_MANAGER_SETUP_REQUIRED='\(.*\)'$/\1/p" "$cfg_dir/panel.env" | sed -n '1p')"
+    if [ "$setup_required" = "1" ]; then
+      DEPLOY_PANEL_CREDENTIALS_CREATED=1
+      DEPLOY_ADMIN_USER="$(sed -n "s/^OLCRTC_MANAGER_USER='\(.*\)'$/\1/p" "$cfg_dir/panel.env" | sed -n '1p')"
+      DEPLOY_ADMIN_PASS="$(sed -n "s/^OLCRTC_MANAGER_PASS='\(.*\)'$/\1/p" "$cfg_dir/panel.env" | sed -n '1p')"
+    else
+      DEPLOY_PANEL_CREDENTIALS_CREATED=0
+      DEPLOY_ADMIN_USER=""
+      DEPLOY_ADMIN_PASS=""
+    fi
     info "kept existing $cfg_dir/panel.env"
     return
   fi
