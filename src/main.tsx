@@ -170,6 +170,13 @@ const payloadFields: Record<string, Array<{ key: string; label: string; defaultV
   ],
 };
 
+const supportLinks = [
+  { label: "Tribute", href: "https://t.me/tribute/app?startapp=dK9j" },
+  { label: "NOWPayments", href: "https://nowpayments.io/donation/svllvsx" },
+  { label: "svllvsxprod", href: "https://t.me/svllvsxprod" },
+  { label: "Open Libre Community", href: "https://t.me/openlibrecommunity" },
+];
+
 async function request(path: string, options?: RequestInit) {
   const res = await fetch(path, options);
   if (!res.ok) {
@@ -292,6 +299,27 @@ function HeaderMetric({ label, value }: { label: string; value: React.ReactNode 
       <div className="eyebrow leading-3">{label}</div>
       <div className="brand-title text-sm font-semibold leading-4 text-foreground">{value}</div>
     </div>
+  );
+}
+
+function SupportFooter() {
+  return (
+    <footer className="mt-8">
+      <div className="mb-3 text-center text-xs uppercase tracking-[0.28em] text-muted-foreground">Поддержка и сообщество</div>
+      <div className="grid grid-cols-4 gap-3 overflow-x-auto pb-1">
+        {supportLinks.map((link) => (
+          <a
+            key={link.href}
+            className="secondary-glow inline-flex h-11 min-w-40 items-center justify-center rounded-full border px-4 text-center text-sm font-semibold text-foreground transition hover:-translate-y-0.5"
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </footer>
   );
 }
 
@@ -1102,6 +1130,8 @@ function App() {
             })}
           </div>
         </section>
+
+        <SupportFooter />
       </main>
 
       {createOpen && (
