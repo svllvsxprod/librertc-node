@@ -207,13 +207,6 @@ random_password() {
   random_hex 18
 }
 
-generate_room_id() {
-  pull_image
-  room_id="$(docker run --rm --entrypoint /usr/local/bin/olcrtc "$LIBRERTC_NODE_IMAGE" -mode gen -carrier jazz -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
-  [ -n "$room_id" ] || die "olcrtc generated an empty room id"
-  printf '%s\n' "$room_id"
-}
-
 write_deploy_env() {
   mode="$1"
   port="$2"
@@ -260,30 +253,12 @@ write_deploy_config() {
     info "kept existing $cfg_dir/config.json"
     return
   fi
-  room_id="$(generate_room_id)"
-  key="$(random_hex 32)"
   cat >"$cfg_dir/config.json" <<EOF
 {
   "version": 1,
   "name": "LibreRTC Node",
   "port": 8888,
-  "clients": [
-    {
-      "client-id": "default",
-      "quota": {"speed_mbps": 0, "traffic_gb": 0},
-      "locations": [
-        {
-          "name": "Default",
-          "endpoint": {"room_id": "$room_id", "key": "$key"},
-          "carrier": "jazz",
-          "transport": {"type": "datachannel"},
-          "link": "direct",
-          "data": "data",
-          "dns": "1.1.1.1:53"
-        }
-      ]
-    }
-  ]
+  "clients": []
 }
 EOF
   chmod 0600 "$cfg_dir/config.json" 2>/dev/null || true

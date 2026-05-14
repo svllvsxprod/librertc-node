@@ -56,7 +56,7 @@ Node нужен там, где хочется развернуть LibreRTC на
 
 1. Администратор запускает installer на чистом сервере.
 2. Wizard спрашивает режим публикации: домен через Caddy или raw port.
-3. Installer ставит зависимости, собирает `olcrtc`, создаёт config и временные credentials.
+3. Installer ставит зависимости, создаёт пустой config и временные credentials.
 4. Панель открывается по `/admin`.
 5. Администратор создаёт клиентов и выдаёт им subscription URL или `olcrtc://` URI.
 
@@ -299,35 +299,11 @@ Minimal `config.json` shape:
   "version": 1,
   "name": "LibreRTC Node",
   "port": 8888,
-  "clients": [
-    {
-      "client-id": "default",
-      "quota": {
-        "speed_mbps": 0,
-        "traffic_gb": 0
-      },
-      "locations": [
-        {
-          "name": "Default",
-          "endpoint": {
-            "room_id": "concrete-room-id",
-            "key": "64-hex-character-key"
-          },
-          "carrier": "wbstream",
-          "transport": {
-            "type": "datachannel"
-          },
-          "link": "direct",
-          "data": "data",
-          "dns": "1.1.1.1:53"
-        }
-      ]
-    }
-  ]
+  "clients": []
 }
 ```
 
-Installer генерирует concrete `room_id` и `key` автоматически. Placeholder values rejected by deployment preflight checks.
+Installer больше не создаёт клиента по умолчанию и не зависит от доступности Jazz/WB APIs во время установки. Первый клиент создаётся вручную в панели после входа.
 
 ## Безопасность
 

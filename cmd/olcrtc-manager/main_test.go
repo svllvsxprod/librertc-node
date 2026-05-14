@@ -668,6 +668,13 @@ func TestConfigRejectsAnyRoomID(t *testing.T) {
 	}
 }
 
+func TestConfigAllowsEmptyClients(t *testing.T) {
+	cfg := Config{Name: "LibreRTC Node", Port: 8888, Clients: []Client{}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v, want nil", err)
+	}
+}
+
 func TestTransportUnmarshalPayload(t *testing.T) {
 	var cfg Config
 	data := []byte(`{

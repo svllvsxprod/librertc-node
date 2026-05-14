@@ -2489,9 +2489,6 @@ func (c Config) Validate() error {
 	if c.Port <= 0 || c.Port > 65535 {
 		return fmt.Errorf("port must be between 1 and 65535, got %d", c.Port)
 	}
-	if len(c.Locations) == 0 {
-		return errors.New("locations must not be empty")
-	}
 	for i, client := range c.Clients {
 		if err := validateQuota(client.Quota); err != nil {
 			return fmt.Errorf("clients[%d].quota: %w", i, err)
