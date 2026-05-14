@@ -159,6 +159,7 @@ type process struct {
 	netns    *netnsRuntime
 	logs     *logBuffer
 	done     chan error
+	stopped  chan struct{}
 	started  time.Time
 	exited   time.Time
 	exitErr  string
@@ -695,10 +696,10 @@ func (s *Supervisor) Restart(ctx context.Context, clientID, roomID, transport st
 	key := strings.Join([]string{strings.TrimSpace(clientID), strings.TrimSpace(roomID), strings.TrimSpace(transport)}, ":")
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	p, ok := s.processes[key]
 	if !ok {
+		defer s.mu.Unlock()
 		loc, found := s.locationLocked(key)
 		if !found {
 			return fmt.Errorf("location %q not found", key)
@@ -717,7 +718,20 @@ func (s *Supervisor) Restart(ctx context.Context, clientID, roomID, transport st
 		return nil
 	}
 	loc := p.location
-	s.stopLocked(key)
+	if s.quota != nil {
+		s.quota.Unregister(key)
+	}
+	stopProcess(p)
+	delete(s.processes, key)
+	s.mu.Unlock()
+
+	stopProcessAndWait(ctx, p)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.processes[key]; exists {
+		return nil
+	}
 	next, err := s.start(ctx, s.olcrtcPath, loc)
 	if err != nil {
 		return err
@@ -2366,10 +2380,11 @@ func startInstance(ctx context.Context, olcrtcPath string, loc Location) (*proce
 		return nil, fmt.Errorf("start olcrtc for %s: %w", locationKey(loc), err)
 	}
 
-	p := &process{location: loc, cmd: cmd, netns: ns, logs: logs, done: make(chan error, 1), started: time.Now(), running: true}
+	p := &process{location: loc, cmd: cmd, netns: ns, logs: logs, done: make(chan error, 1), stopped: make(chan struct{}), started: time.Now(), running: true}
 	log.Printf("started olcrtc for %s in %s: %s %s", locationKey(loc), ns.Name, olcrtcPath, strings.Join(redactArgs(args), " "))
 
 	go func() {
+		defer close(p.stopped)
 		err := cmd.Wait()
 		p.markExited(err)
 		cleanupNetns(context.Background(), ns)
@@ -2384,6 +2399,27 @@ func stopProcess(p *process) {
 		return
 	}
 	_ = p.cmd.Process.Signal(syscall.SIGTERM)
+}
+
+func stopProcessAndWait(ctx context.Context, p *process) {
+	if p == nil || p.stopped == nil {
+		return
+	}
+	select {
+	case <-p.stopped:
+		return
+	case <-time.After(5 * time.Second):
+		if p.cmd != nil && p.cmd.Process != nil {
+			_ = p.cmd.Process.Kill()
+		}
+	case <-ctx.Done():
+		return
+	}
+	select {
+	case <-p.stopped:
+	case <-ctx.Done():
+	case <-time.After(2 * time.Second):
+	}
 }
 
 func isLoopbackRequest(r *http.Request) bool {

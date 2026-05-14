@@ -829,6 +829,48 @@ func TestSupervisorReloadFailureKeepsCurrentConfig(t *testing.T) {
 	}
 }
 
+func TestSupervisorRestartWaitsForOldProcessCleanup(t *testing.T) {
+	loc := testLocation("room-01", "Netherlands")
+	oldStopped := make(chan struct{})
+	starts := 0
+	supervisor := NewSupervisor("olcrtc", func(ctx context.Context, path string, loc Location) (*process, error) {
+		starts++
+		p := &process{location: loc, logs: newLogBuffer(1), running: true, stopped: make(chan struct{})}
+		if starts == 1 {
+			p.stopped = oldStopped
+		}
+		return p, nil
+	})
+
+	if err := supervisor.StartAll(context.Background(), testConfig(loc)); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- supervisor.Restart(context.Background(), loc.ClientID, loc.Endpoint.RoomID, loc.Transport.Type)
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("Restart returned before old process cleanup: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(oldStopped)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Restart error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Restart did not finish after old process cleanup")
+	}
+	if starts != 2 {
+		t.Fatalf("starts = %d, want 2", starts)
+	}
+}
+
 func testConfig(locations ...Location) Config {
 	return Config{
 		Name:      "ScumVPN",
