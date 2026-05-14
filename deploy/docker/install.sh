@@ -216,7 +216,7 @@ random_password() {
 generate_room_id() {
   olcrtc_bin="$(binary_abs)"
   [ -x "$olcrtc_bin" ] || die "olcrtc binary is missing or not executable: $olcrtc_bin"
-  room_id="$($olcrtc_bin -mode gen -carrier wbstream -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
+  room_id="$($olcrtc_bin -mode gen -carrier jazz -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
   [ -n "$room_id" ] || die "olcrtc generated an empty room id"
   printf '%s\n' "$room_id"
 }
@@ -272,7 +272,7 @@ write_deploy_config() {
         {
           "name": "Default",
           "endpoint": {"room_id": "$room_id", "key": "$key"},
-          "carrier": "wbstream",
+          "carrier": "jazz",
           "transport": {"type": "datachannel"},
           "link": "direct",
           "data": "data",

@@ -608,6 +608,27 @@ func TestAPIV1ClientCreateUsesManualRoomID(t *testing.T) {
 	}
 }
 
+func TestAPIV1ClientCreateRequiresManualWBStreamRoomID(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfigWithoutBackup(configPath, testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+	body := bytes.NewBufferString(`{"client_id":"manual","carrier":"wbstream","transport":"datachannel","dns":"1.1.1.1:53","name":"Manual"}`)
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, filepath.Join(t.TempDir(), "missing-olcrtc"), func() error {
+		t.Fatal("reload must not run on failed create")
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/clients", body))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "room_id is required for wbstream") {
+		t.Fatalf("response missing room_id error: %s", rec.Body.String())
+	}
+}
+
 func TestAPIV1ReloadUsesStableEnvelope(t *testing.T) {
 	reloads := 0
 	rec := httptest.NewRecorder()

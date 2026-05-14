@@ -1086,6 +1086,9 @@ func createLocationsFromRequest(cfg Config, req addClientRequest) ([]Location, e
 		if err := validatePayload(transportConfig); err != nil {
 			return nil, err
 		}
+		if carrier == "wbstream" && req.RoomID == "" {
+			return nil, errors.New("room_id is required for wbstream; create a room on stream.wb.ru and paste its ID")
+		}
 		name := req.Name
 		if name == "" {
 			name = "Default location"
