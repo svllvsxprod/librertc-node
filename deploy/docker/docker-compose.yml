@@ -1,11 +1,6 @@
 services:
   librertc-node:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile
-      args:
-        OLCRTC_BINARY: ${LIBRERTC_OLCRTC_BINARY:-deploy/docker/bin/olcrtc}
-    image: ${LIBRERTC_NODE_IMAGE:-librertc-node:local}
+    image: ${LIBRERTC_NODE_IMAGE:-ghcr.io/svllvsxprod/librertc-node:latest}
     container_name: ${LIBRERTC_NODE_CONTAINER:-librertc-node}
     restart: unless-stopped
     ports:

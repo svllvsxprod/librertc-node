@@ -1,0 +1,8 @@
+services:
+  librertc-node:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        LIBRERTC_CORE_REPO: ${LIBRERTC_CORE_REPO:-https://github.com/svllvsxprod/librertc-core.git}
+        LIBRERTC_CORE_REF: ${LIBRERTC_CORE_REF:-main}

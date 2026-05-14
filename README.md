@@ -50,7 +50,7 @@
 
 LibreRTC Node управляет серверной частью LibreRTC deployment. Он хранит конфигурацию клиентов, создаёт subscription URL, показывает QR/URI payload, запускает отдельные `olcrtc` процессы для каждой location и следит за их состоянием.
 
-Node нужен там, где хочется развернуть LibreRTC на VPS без ручной сборки runtime, настройки Docker Compose, reverse proxy и временных admin credentials. На первом запуске installer генерирует временный login/password и заставляет сменить их при первом входе.
+Node нужен там, где хочется развернуть LibreRTC на VPS без ручной сборки runtime, настройки Docker Compose, reverse proxy и временных admin credentials. Installer использует готовый Docker image из GHCR, поэтому VPS не тратит ресурсы на сборку Go/core. На первом запуске installer генерирует временный login/password и заставляет сменить их при первом входе.
 
 Основной сценарий:
 
@@ -115,7 +115,7 @@ curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/depl
 - Веб-панель администратора на `/admin`.
 - Temporary login/password на первом deploy.
 - Forced first-login setup со сменой login и password.
-- Автоматическая сборка `olcrtc` из `librertc-core`.
+- Готовый Docker image с bundled `olcrtc` runtime.
 - Автоматический Docker Compose deploy.
 - Domain mode через Caddy с HTTPS.
 - Raw port mode для тестов и закрытых окружений.
@@ -191,6 +191,14 @@ go test ./...
 
 Docker deployment files are in `deploy/docker`.
 
+По умолчанию используется image:
+
+```text
+ghcr.io/svllvsxprod/librertc-node:latest
+```
+
+Обновление image не перетирает данные панели: `config.json` и `panel.env` лежат в persistent bind mount `deploy/docker/local` на сервере, а не внутри контейнера.
+
 Useful commands from repo checkout:
 
 ```sh
@@ -202,11 +210,16 @@ sh deploy/docker/install.sh health
 sh deploy/docker/install.sh stop
 ```
 
+Локальная сборка image, если нужна разработка без GHCR:
+
+```sh
+sh deploy/docker/install.sh build-image
+```
+
 Default paths on server:
 
 ```text
 /opt/librertc-node
-/opt/librertc-core
 /opt/librertc-node/deploy/docker/local/config.json
 /opt/librertc-node/deploy/docker/local/panel.env
 /etc/caddy/conf.d/librertc-node.caddy

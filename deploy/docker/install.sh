@@ -22,6 +22,7 @@ Commands:
   init      Create local .env and config template without starting containers
   check     Validate local deployment prerequisites
   build-core Build the runtime binary from LibreRTC Core
+  build-image Build the Docker image locally
   start     Validate and start with docker compose
   stop      Stop containers
   restart   Restart containers
@@ -156,7 +157,7 @@ load_env() {
   : "${LIBRERTC_NODE_HOST_BIND:=127.0.0.1}"
   : "${LIBRERTC_NODE_HOST_PORT:=18888}"
   : "${LIBRERTC_NODE_CONFIG_DIR:=./local}"
-  : "${LIBRERTC_OLCRTC_BINARY:=deploy/docker/bin/olcrtc}"
+  : "${LIBRERTC_NODE_IMAGE:=ghcr.io/svllvsxprod/librertc-node:latest}"
   : "${LIBRERTC_ALLOW_PUBLIC_BIND:=0}"
 }
 
@@ -164,13 +165,6 @@ config_dir_abs() {
   case "$LIBRERTC_NODE_CONFIG_DIR" in
     /*) printf '%s\n' "$LIBRERTC_NODE_CONFIG_DIR" ;;
     *) printf '%s\n' "$SCRIPT_DIR/$LIBRERTC_NODE_CONFIG_DIR" ;;
-  esac
-}
-
-binary_abs() {
-  case "$LIBRERTC_OLCRTC_BINARY" in
-    /*) printf '%s\n' "$LIBRERTC_OLCRTC_BINARY" ;;
-    *) printf '%s\n' "$REPO_ROOT/$LIBRERTC_OLCRTC_BINARY" ;;
   esac
 }
 
@@ -214,9 +208,8 @@ random_password() {
 }
 
 generate_room_id() {
-  olcrtc_bin="$(binary_abs)"
-  [ -x "$olcrtc_bin" ] || die "olcrtc binary is missing or not executable: $olcrtc_bin"
-  room_id="$($olcrtc_bin -mode gen -carrier jazz -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
+  pull_image
+  room_id="$(docker run --rm --entrypoint /usr/local/bin/olcrtc "$LIBRERTC_NODE_IMAGE" -mode gen -carrier jazz -dns 1.1.1.1:53 -amount 1 2>/dev/null | sed -n '1p')" || die "failed to generate room id"
   [ -n "$room_id" ] || die "olcrtc generated an empty room id"
   printf '%s\n' "$room_id"
 }
@@ -233,7 +226,7 @@ write_deploy_env() {
     allow_public="1"
   fi
   cat >"$ENV_FILE" <<EOF
-LIBRERTC_NODE_IMAGE=librertc-node:local
+LIBRERTC_NODE_IMAGE=ghcr.io/svllvsxprod/librertc-node:latest
 LIBRERTC_NODE_CONTAINER=librertc-node
 LIBRERTC_NODE_HOST_BIND=$bind
 LIBRERTC_NODE_HOST_PORT=$port
@@ -242,12 +235,22 @@ LIBRERTC_NODE_CONFIG_DIR=$cfg_dir
 LIBRERTC_NODE_DATA_VOLUME=librertc-node-data
 LIBRERTC_NODE_LOGS_VOLUME=librertc-node-logs
 LIBRERTC_NODE_NETWORK=librertc-node
-LIBRERTC_OLCRTC_BINARY=deploy/docker/bin/olcrtc
 LIBRERTC_CORE_REPO=https://github.com/svllvsxprod/librertc-core.git
 LIBRERTC_CORE_REF=main
-LIBRERTC_CORE_WORKDIR=/opt/librertc-core
-LIBRERTC_CORE_GO_IMAGE=golang:1.26-bookworm
 EOF
+}
+
+pull_image() {
+  load_env
+  if docker pull "$LIBRERTC_NODE_IMAGE"; then
+    return
+  fi
+  docker image inspect "$LIBRERTC_NODE_IMAGE" >/dev/null 2>&1 || die "failed to pull Docker image: $LIBRERTC_NODE_IMAGE"
+}
+
+build_image() {
+  load_env
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -f "$SCRIPT_DIR/docker-compose.build.yml" build
 }
 
 write_deploy_config() {
@@ -417,12 +420,12 @@ deploy_server() {
   write_deploy_env "$mode" "$port" "./local"
   load_env
   cfg_dir="$(config_dir_abs)"
-  sh "$SCRIPT_DIR/build-core.sh"
+  pull_image
   write_deploy_config "$cfg_dir"
   write_temporary_panel_credentials "$cfg_dir"
   compose down --remove-orphans >/dev/null 2>&1 || true
   check_prerequisites
-  compose up -d --build
+  compose up -d
   if [ "$mode" = "domain" ]; then
     configure_caddy "$domain" "$port"
     url="https://$domain/admin"
@@ -469,8 +472,7 @@ check_prerequisites() {
     die "host port $LIBRERTC_NODE_HOST_PORT is already in use; change it in $ENV_FILE"
   fi
 
-  olcrtc_bin=$(binary_abs)
-  [ -f "$olcrtc_bin" ] || die "olcrtc binary is missing: $olcrtc_bin"
+  docker image inspect "$LIBRERTC_NODE_IMAGE" >/dev/null 2>&1 || die "Docker image is missing: $LIBRERTC_NODE_IMAGE"
 
   cfg_dir=$(config_dir_abs)
   cfg="$cfg_dir/config.json"
@@ -502,10 +504,15 @@ case "$cmd" in
     init_files
     sh "$SCRIPT_DIR/build-core.sh"
     ;;
+  build-image)
+    init_files
+    build_image
+    ;;
   start)
     init_files
+    pull_image
     check_prerequisites
-    compose up -d --build
+    compose up -d
     info "started. Health: $(health_url)"
     ;;
   stop)

@@ -1,3 +1,13 @@
+FROM golang:1.26-bookworm AS core-build
+
+ARG LIBRERTC_CORE_REPO=https://github.com/svllvsxprod/librertc-core.git
+ARG LIBRERTC_CORE_REF=main
+
+WORKDIR /core
+RUN git clone --depth 1 --branch "$LIBRERTC_CORE_REF" "$LIBRERTC_CORE_REPO" . \
+    || (git clone "$LIBRERTC_CORE_REPO" . && git checkout "$LIBRERTC_CORE_REF")
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/olcrtc ./cmd/olcrtc
+
 FROM golang:1.26-bookworm AS go-build
 
 WORKDIR /src
@@ -11,9 +21,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates iproute2 iptables \
     && rm -rf /var/lib/apt/lists/*
 
-ARG OLCRTC_BINARY=deploy/docker/bin/olcrtc
 COPY --from=go-build /out/librertc-node /usr/local/bin/librertc-node
-COPY ${OLCRTC_BINARY} /usr/local/bin/olcrtc
+COPY --from=core-build /out/olcrtc /usr/local/bin/olcrtc
 COPY deploy/docker/entrypoint.sh /usr/local/bin/librertc-entrypoint
 COPY deploy/docker/config.sample.json /usr/share/librertc/config.sample.json
 
