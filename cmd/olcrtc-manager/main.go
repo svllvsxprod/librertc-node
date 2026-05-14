@@ -1043,7 +1043,6 @@ func updateClientFromRequest(ctx context.Context, configPath, olcrtcPath, client
 	if err := validateQuota(req.Quota); err != nil {
 		return err
 	}
-
 	cfg, err := loadConfig(configPath)
 	if err != nil {
 		return err
@@ -1061,6 +1060,10 @@ func updateClientFromRequest(ctx context.Context, configPath, olcrtcPath, client
 		loc := cfg.Clients[i].Locations[0]
 		if req.RoomID != "" {
 			loc.Endpoint.RoomID = req.RoomID
+		} else if manualRoomRequired(req.Carrier) {
+			if loc.Carrier != req.Carrier || loc.Endpoint.RoomID == "" {
+				return manualRoomRequiredError(req.Carrier)
+			}
 		} else if loc.Carrier != req.Carrier || loc.DNS != req.DNS {
 			loc.Endpoint.RoomID, err = generateRoomID(ctx, olcrtcPath, req.Carrier, req.DNS)
 			if err != nil {
@@ -1100,8 +1103,8 @@ func createLocationsFromRequest(cfg Config, req addClientRequest) ([]Location, e
 		if err := validatePayload(transportConfig); err != nil {
 			return nil, err
 		}
-		if carrier == "wbstream" && req.RoomID == "" {
-			return nil, errors.New("room_id is required for wbstream; create a room on stream.wb.ru and paste its ID")
+		if manualRoomRequired(carrier) && req.RoomID == "" {
+			return nil, manualRoomRequiredError(carrier)
 		}
 		name := req.Name
 		if name == "" {
@@ -1350,6 +1353,26 @@ func generateRoomID(ctx context.Context, olcrtcPath, carrier, dns string) (strin
 		}
 	}
 	return "", errors.New("olcrtc generated empty room id")
+}
+
+func manualRoomRequired(carrier string) bool {
+	switch carrier {
+	case "wbstream", "telemost":
+		return true
+	default:
+		return false
+	}
+}
+
+func manualRoomRequiredError(carrier string) error {
+	switch carrier {
+	case "wbstream":
+		return errors.New("room_id is required for wbstream; create a room on stream.wb.ru and paste its ID")
+	case "telemost":
+		return errors.New("room_id is required for telemost; paste a Telemost room URL or room ID")
+	default:
+		return fmt.Errorf("room_id is required for %s", carrier)
+	}
 }
 
 func randomHex(size int) (string, error) {

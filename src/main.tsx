@@ -133,6 +133,7 @@ type ClientForm = {
 };
 
 const carriers = ["wbstream", "jazz", "telemost"];
+const manualRoomCarriers = new Set(["wbstream", "telemost"]);
 const transportsByCarrier: Record<string, string[]> = {
   wbstream: ["datachannel", "vp8channel", "seichannel", "videochannel"],
   jazz: ["datachannel", "vp8channel", "seichannel", "videochannel"],
@@ -206,6 +207,15 @@ async function request(path: string, options?: RequestInit) {
 
 function transportOptions(carrier: string) {
   return transportsByCarrier[carrier] ?? transportsByCarrier.wbstream;
+}
+
+function requiresManualRoom(carrier: string) {
+  return manualRoomCarriers.has(carrier);
+}
+
+function manualRoomHint(carrier: string) {
+  if (carrier === "telemost") return "Вставь ссылку или ID комнаты Telemost. Значение передается в olcrtc как room URL.";
+  return "Можно вставить ID комнаты, созданной вручную на сайте WB Stream.";
 }
 
 function normalizeForm(form: ClientForm): ClientForm {
@@ -541,16 +551,16 @@ function ClientFormFields({
           placeholder="Default location"
         />
       </label>
-      {form.carrier === "wbstream" && (
+      {requiresManualRoom(form.carrier) && (
         <label className="grid gap-2 text-sm text-muted-foreground">
-          Room ID
+          {form.carrier === "telemost" ? "Telemost Room URL / ID" : "Room ID"}
           <input
             className="h-10 rounded-md border border-border bg-background px-3 font-mono text-xs text-foreground outline-none focus:border-primary"
             value={form.room_id}
             onChange={(event) => set({ room_id: event.target.value })}
-            placeholder="оставь пустым для автогенерации"
+            placeholder={form.carrier === "telemost" ? "https://telemost.yandex.ru/..." : "room id"}
           />
-          <span className="text-xs text-muted-foreground/80">Можно вставить ID комнаты, созданной вручную на сайте WB Stream.</span>
+          <span className="text-xs text-muted-foreground/80">{manualRoomHint(form.carrier)}</span>
         </label>
       )}
       <div className="grid gap-3 md:grid-cols-2">
@@ -757,7 +767,7 @@ function App() {
         body: JSON.stringify({
           client_id: createForm.client_id.trim(),
           name: createForm.name.trim(),
-          room_id: createForm.carrier === "wbstream" ? createForm.room_id.trim() : "",
+          room_id: requiresManualRoom(createForm.carrier) ? createForm.room_id.trim() : "",
           quota: cleanQuota(createForm.quota),
           carrier: createForm.carrier,
           transport: createForm.transport,
@@ -766,7 +776,7 @@ function App() {
         }),
       });
       setCreateOpen(false);
-    }, createForm.carrier === "wbstream" && createForm.room_id.trim() ? "Клиент создан с указанным room" : "Клиент создан, room сгенерирован отдельно");
+    }, requiresManualRoom(createForm.carrier) && createForm.room_id.trim() ? "Клиент создан с указанным room" : "Клиент создан, room сгенерирован отдельно");
 
   const updateClient = () =>
     runAction(async () => {
@@ -776,7 +786,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editForm.name.trim(),
-          room_id: editForm.carrier === "wbstream" ? editForm.room_id.trim() : "",
+          room_id: requiresManualRoom(editForm.carrier) ? editForm.room_id.trim() : "",
           quota: cleanQuota(editForm.quota),
           carrier: editForm.carrier,
           transport: editForm.transport,
@@ -1108,13 +1118,15 @@ function App() {
                             <RefreshCw className="h-3.5 w-3.5" />
                             Restart
                           </button>
-                          <button
-                            className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
-                            disabled={busy}
-                            onClick={() => regenerateRoom(client.client_id)}
-                          >
-                            Room
-                          </button>
+                          {!requiresManualRoom(loc.carrier) && (
+                            <button
+                              className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
+                              disabled={busy}
+                              onClick={() => regenerateRoom(client.client_id)}
+                            >
+                              Room
+                            </button>
+                          )}
                           <button
                             className="secondary-glow h-8 rounded-full border px-3 text-xs disabled:opacity-60"
                             disabled={busy}

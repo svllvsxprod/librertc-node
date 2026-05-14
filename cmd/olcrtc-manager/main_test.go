@@ -629,6 +629,55 @@ func TestAPIV1ClientCreateRequiresManualWBStreamRoomID(t *testing.T) {
 	}
 }
 
+func TestAPIV1ClientCreateUsesManualTelemostRoomID(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfigWithoutBackup(configPath, testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+	body := bytes.NewBufferString(`{"client_id":"tele","room_id":"https://telemost.yandex.ru/j/abc","carrier":"telemost","transport":"vp8channel","dns":"1.1.1.1:53","name":"Telemost"}`)
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, filepath.Join(t.TempDir(), "missing-olcrtc"), func() error {
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/clients", body))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, ok := testClientByID(cfg, "tele")
+	if !ok {
+		t.Fatalf("created client not found: %#v", cfg.Clients)
+	}
+	if got := client.Locations[0].Endpoint.RoomID; got != "https://telemost.yandex.ru/j/abc" {
+		t.Fatalf("room_id = %q, want Telemost URL", got)
+	}
+}
+
+func TestAPIV1ClientCreateRequiresManualTelemostRoomID(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfigWithoutBackup(configPath, testConfig(testLocation("room-01", "Netherlands"))); err != nil {
+		t.Fatal(err)
+	}
+	body := bytes.NewBufferString(`{"client_id":"tele","carrier":"telemost","transport":"vp8channel","dns":"1.1.1.1:53","name":"Telemost"}`)
+	rec := httptest.NewRecorder()
+
+	apiV1ClientsHandler(nil, configPath, filepath.Join(t.TempDir(), "missing-olcrtc"), func() error {
+		t.Fatal("reload must not run on failed create")
+		return nil
+	}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/clients", body))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "room_id is required for telemost") {
+		t.Fatalf("response missing room_id error: %s", rec.Body.String())
+	}
+}
+
 func TestAPIV1ReloadUsesStableEnvelope(t *testing.T) {
 	reloads := 0
 	rec := httptest.NewRecorder()
