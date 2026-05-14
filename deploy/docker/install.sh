@@ -440,10 +440,19 @@ URL: $url
 EOF
   if [ "${DEPLOY_PANEL_CREDENTIALS_CREATED:-0}" = "1" ]; then
     cat <<EOF
-Temporary login: $DEPLOY_ADMIN_USER
-Temporary password: $DEPLOY_ADMIN_PASS
+
+============================================================
+TEMPORARY ADMIN CREDENTIALS - SAVE THESE NOW
+============================================================
+Admin panel: $url
+Login:       $DEPLOY_ADMIN_USER
+Password:    $DEPLOY_ADMIN_PASS
+
+These credentials are required for the first login.
+They are stored on the VPS in: $cfg_dir/panel.env
 
 The first login will require changing both login and password.
+============================================================
 EOF
   else
     cat <<EOF

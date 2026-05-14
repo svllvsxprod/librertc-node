@@ -65,7 +65,7 @@ Node нужен там, где хочется развернуть LibreRTC на
 На чистом Ubuntu/Debian сервере:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sudo sh
 ```
 
 Installer запустит интерактивный wizard:
@@ -92,22 +92,41 @@ Domain []: rtc.example.com
 ```text
 LibreRTC Node deployed.
 URL: https://rtc.example.com/admin
-Temporary login: ...
-Temporary password: ...
+
+============================================================
+TEMPORARY ADMIN CREDENTIALS - SAVE THESE NOW
+============================================================
+Admin panel: https://rtc.example.com/admin
+Login:       ...
+Password:    ...
+
+These credentials are required for the first login.
+They are stored on the VPS in: /opt/librertc-node/deploy/docker/local/panel.env
+
+The first login will require changing both login and password.
+============================================================
 ```
 
 Первый вход потребует сменить и login, и password.
 
+Если временные login/password потерялись до первого входа, их можно посмотреть на VPS:
+
+```sh
+sudo cat /opt/librertc-node/deploy/docker/local/panel.env
+```
+
+Файл содержит `OLCRTC_MANAGER_USER` и `OLCRTC_MANAGER_PASS`. После первого входа замени оба значения через setup-экран в панели.
+
 Для автоматизации можно передать параметры напрямую:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh -s -- deploy --mode domain --domain rtc.example.com
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sudo sh -s -- deploy --mode domain --domain rtc.example.com
 ```
 
 Raw port mode:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sh -s -- deploy --mode port --port 18888
+curl -fsSL https://raw.githubusercontent.com/svllvsxprod/librertc-node/main/deploy/docker/install.sh | sudo sh -s -- deploy --mode port --port 18888
 ```
 
 ## Возможности
